@@ -1,0 +1,182 @@
+id: CHANGE_ME
+name: Scatter Basic
+description: A basic scatter chart built with the Flourish SDK
+author: ''
+
+sdk_version: 3
+
+build:
+  src:
+    script: npm run build
+    directory: src
+    files:
+      - rollup.config.js
+
+  less:
+    script: npm run less
+    directory: less
+
+settings:
+  # CONVENTION: the first section is named after the chart ("Scatter").
+  # Height settings go at the bottom of this section — no separate "Size"
+  # section and no new_section label. All other charts should follow this pattern.
+  - Scatter
+  - property: dot_radius
+    name: Dot radius
+    description: Radius of each dot in pixels
+    type: number
+    min: 1
+    max: 50
+  - property: dot_color
+    name: Color
+    type: color
+    hide_if:
+      data.data.color: true
+
+  - property: height_mode
+    name: Height mode
+    type: string
+    style: buttons
+    choices:
+      - [Auto, auto]
+      - [Aspect ratio, aspect]
+      # - [Fill container, off]  # uncomment if users need to opt into container-filling in responsive embeds
+    description: <b>Auto</b> sets a sensible default height. <b>Aspect ratio</b> lets you control the chart shape. Both modes only affect responsive embeds — in a fixed-height context the chart fills the available space.
+  - property: aspect_ratio
+    name: Aspect (desktop)
+    description: Width divided by height. 1 is square, above 1 is wider, below 1 is taller.
+    type: number
+    min: 0.1
+    max: 10
+    step: 0.1
+    width: half
+    show_if:
+      height_mode: aspect
+  - property: aspect_ratio_mobile
+    name: Aspect (mobile)
+    description: Aspect ratio used on small screens.
+    type: number
+    min: 0.1
+    max: 10
+    step: 0.1
+    width: half
+    show_if:
+      height_mode: aspect
+  - property: aspect_breakpoint
+    name: Mobile breakpoint
+    description: Window width (px) below which the mobile aspect ratio is used.
+    type: number
+    min: 200
+    step: 50
+    width: half
+    show_if:
+      height_mode: aspect
+
+  - Colors
+  # NOTE: The show_if conditions on discrete/numeric tags below are a known SDK limitation.
+  # Type-based settings (string vs number) may not appear reliably in local `flourish run`.
+  # Publish a prerelease to test these conditions correctly in Flourish Studio.
+  - property: color
+    import: "@flourish/colors"
+    show_if:
+      data.data.color: true
+    overrides:
+      - tag: discrete
+        method: extend
+        show_if:
+          data.data.color.type: string
+      - tag: numeric
+        method: extend
+        show_if:
+          data.data.color.type: number
+
+  - X axis
+  - property: x
+    import: "@flourish/chart-layout/x"
+
+  - Y axis
+  - property: y
+    import: "@flourish/chart-layout/y"
+
+  - Legends
+  - property: legend_categorical
+    import: "@flourish/legend/discrete-color"
+    show_if:
+      data.data.color.type: string
+  - property: legend_continuous
+    import: "@flourish/legend/continuous-color"
+    show_if:
+      data.data.color.type: number
+    overrides:
+      - property: binned_label_mode
+        hide_if:
+          color.binning: false
+
+  - Popups & panels
+  - property: popup
+    import: "@flourish/info-popup"
+
+  - Chart background
+  # chart_bg only sets the plot-area background (inside the axes).
+  # To darken the full canvas including margins and axis labels, use
+  # Layout > Background colour and Text colour instead, then adjust
+  # tick colours separately via the X/Y axis settings.
+  - property: chart_bg
+    import: "@flourish/chart-layout/background"
+
+  - Number formatting
+  - property: x_format
+    import: "@flourish/number-formatter"
+    overrides:
+      - property: prefix
+        new_section: X axis
+  - property: y_format
+    import: "@flourish/number-formatter"
+    overrides:
+      - property: prefix
+        new_section: Y axis
+
+  - Layout
+  - property: layout
+    import: "@flourish/layout"
+
+data:
+  - dataset: data
+    key: label
+    name: Label
+    description: Name shown in popup and legend
+    type: column
+    column: "Data::A"
+    optional: true
+    data_type: [string]
+  - dataset: data
+    key: x
+    name: X values
+    description: Horizontal position
+    type: column
+    column: "Data::B"
+    data_type: [number]
+  - dataset: data
+    key: y
+    name: Y values
+    description: Vertical position
+    type: column
+    column: "Data::C"
+    data_type: [number]
+  - dataset: data
+    key: color
+    name: Color by
+    type: column
+    column: "Data::D"
+    optional: true
+    description: Colors the dots based on numbers or categories
+    data_type: [string, number]
+    assignment:
+      can_rebind: true
+      hints: { string: { color: true } }
+  - dataset: data
+    key: metadata
+    name: Info for popups
+    description: 'Any extra columns to show in the popup. Each appears as "Column header: value".'
+    type: columns
+    columns: "Data::"

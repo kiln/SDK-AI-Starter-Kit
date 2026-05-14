@@ -1,0 +1,1487 @@
+SDK_BASICS_FOR_AI.txt
+Reference for AI agents building Flourish SDK templates.
+
+================================================================================
+WHAT'S IN THIS REPO AND HOW TO USE IT
+================================================================================
+
+Starter Templates/
+  Three complete, working templates to use as a base or reference:
+
+  scatter-basic      — Use for charts with x or y axes (scatter, line, bar,
+                       box plot, candlestick, heatmap, etc.). The default for
+                       most charts. Multi-file structure showing the full module
+                       stack: @flourish/layout, @flourish/colors, @flourish/legend,
+                       @flourish/info-popup, @flourish/number-formatter.
+
+  simple_accordion   — Use for non-chart templates: no D3, no axes — cards,
+                       tables, lists, text layouts, accordion. Single-file.
+                       Shows the core SDK pattern in its simplest form.
+
+  d3_bar_chart       — Use for charts with no x/y axes: radial, polar, treemap,
+                       network, chord, etc. Single-file. Shows D3 sub-package
+                       imports, layout.getPrimaryWidth/Height(), and responsive
+                       height. Only covers layout and color — for popups, legends,
+                       and number formatting, read scatter-basic's src/ files or
+                       the module wiring cheatsheet in section 5 of this file.
+
+Reference/scatter-facets-and-filter/
+  Reference template demonstrating @flourish/facets (small-multiples grid),
+  @flourish/controls (facet filter dropdown), and @flourish/ui-styles alongside
+  the full scatter module stack. Read this when building any grid-of-charts
+  visualization or when you need to wire up a filter control. Do not use it as
+  a boilerplate — it is a reference only.
+
+This file covers SDK rules and gotchas that aren't obvious from reading the
+starter templates.
+
+================================================================================
+1. CORE CONTRACT — data / state / draw / update
+================================================================================
+
+Every template exports four things:
+
+  export const data  = {};          // Flourish populates this from data tables
+  export const state = {};          // Current values of all settings
+  export function draw()  { ... }   // Called once on load — create DOM here
+  export function update() { ... }  // Called on every settings/data change
+
+Rules:
+- draw() must call update() at the end so the initial render happens
+- update() must be safe to call many times — no DOM creation, only updates
+- update() is also called on every slide change in the Flourish story editor —
+  design animations and transitions so they work correctly when triggered
+  repeatedly, not just on first load
+- state must be JSON-serialisable (no functions, DOM nodes, etc.)
+- Every custom setting in template.yml needs an explicit default in state.
+  Module state objects (layout, color, popup, etc.) only need {} unless you
+  want to override a specific sub-property from the module's defaults. You
+  do not need to enumerate every sub-property — {} is valid and uses defaults.
+  Default drift: if state and template.yml disagree on a default, Flourish uses
+  the state default for all rendering logic — the template.yml default only sets
+  the initial value shown in a brand-new visualization. Keep them in sync.
+- data is populated by Flourish before draw() is called
+- The SDK validator warns if update() takes any parameters — use an internal
+  wrapper function if you need to pass flags
+
+
+================================================================================
+2. TEMPLATE.YML — SETTINGS
+================================================================================
+
+Setting types:
+  type: color       → colour picker, value is a hex string e.g. "#ff0000"
+  type: colors      → colour palette picker, value is an array of hex strings
+                      Use for categorical palettes. Different from color (single).
+  type: number      → number input (add min:, max:, step: as needed)
+  type: string      → single-line text input.
+                      Add a choices: block to make it a dropdown. IMPORTANT: order
+                      is [label, value] — label first, value second:
+                        - property: shape
+                          type: string
+                          choices:
+                            - [Circle, circle]
+                            - [Square, square]
+                      Single strings work when label = value.
+                      style: buttons renders as a button group instead.
+                      choices_other: true adds a free-text fallback alongside the dropdown.
+                      NOTE: there is no "type: choices" — choices is always a modifier
+                      on type: string. Using type: choices will fail silently or error.
+  type: text        → multi-line textarea (use for HTML content)
+  type: boolean     → checkbox, value is true/false.
+                      choices: [[Yes, true], [No, false]] shows as a button group.
+                      Same [label, value] order as string choices.
+  type: font        → font picker, value is an object { name, url }
+                      Use for templates where the font should be user-configurable.
+  type: code        → monospace textarea (for custom CSS or code snippets)
+  type: html        → rich text editor (supports Flourish text bindings)
+  type: hidden      → not shown in the UI; documents state properties that exist
+                      for internal template use but should not appear as settings
+
+Section headings are plain strings (no property):
+  settings:
+    - Chart            # heading
+    - property: ...    # setting
+
+Conditional display:
+  show_if: my_boolean           # show when state.my_boolean is truthy
+  hide_if: my_boolean           # hide when truthy
+  show_if:                      # show when state.my_property equals value
+    my_property: value
+
+Dividers and subheadings — new_section is a field on a setting entry, NOT a
+standalone list item. flourish run will reject an entry with new_section but
+no property with "setting must specify a property".
+
+  - property: advanced_option
+    name: Advanced option
+    new_section: true           # horizontal rule above this setting
+
+  - property: another_option
+    name: Another option
+    new_section: "Subheading"  # rule + subheading label above this setting
+
+Width (fraction of settings panel — halves are most common):
+  width: full           # default
+  width: three quarters
+  width: half
+  width: quarter
+
+Note: Do no use long settings names which might overlap if using half or quarter
+width.
+
+Optional settings (nullable, useful for colors that inherit from parent):
+  optional: true   # adds a null/none option; value will be null when unset
+
+
+================================================================================
+3. TEMPLATE.YML — DATA BINDINGS
+================================================================================
+
+Each binding maps a user-selected column to a key in data.<dataset>:
+
+  data:
+    - dataset: values        # data.values — the JS array of row objects
+      key: label             # row.label — the value from the bound column
+      name: Label            # display name in the data tab UI
+      description: ...       # optional help text
+      type: column           # single column binding
+      column: "Data::A"      # default column (sheet name :: column letter)
+      data_type: [string]    # hint for auto-assignment: string, number, datetime
+
+  type: columns (plural) binds multiple columns at once — value is an array
+  of column names, not values. Use for series data.
+
+  "Info for popups" pattern — instead of creating individual bindings for
+  every piece of metadata that should appear in a tooltip (sample size, notes,
+  source, etc.), use a single type: columns binding with key: metadata:
+
+    - dataset: data
+      key: metadata
+      name: Info for popups
+      description: 'Any extra columns to show in the popup. Each appears as "Column header: value".'
+      type: columns
+      columns: "Data::"   # sheet name + empty column = nothing bound by default
+      data_type: [string, number, datetime]   # always include on type: columns — omitting it causes a prerelease warning
+      # Do NOT add optional: true here — the SDK only allows optional on
+      # type: column (singular) bindings. type: columns requires a columns: field;
+      # use "SheetName::" (no column letter) for no default. "" causes an error.
+
+  With type: columns the user can bind as many columns as they want in one
+  slot. In JS, data.data.column_names.metadata is an array of the user's
+  column headers, and each row's d.metadata is the array of corresponding
+  values. The @flourish/info-popup module renders these automatically as
+  "Column header: value" pairs when you pass the row to popup.mouseover().
+
+  optional: true  is only valid on type: column (singular) bindings. It means
+  the binding doesn't have to be filled and its value will be null when unset.
+  Do not add it to type: columns bindings — the local SDK will reject it.
+
+Accessing data in JS:
+  The accessor is data.<dataset_name>, where <dataset_name> matches the dataset:
+  field in template.yml. The three starter templates all use dataset: data, so
+  the accessor is data.data — not data.values:
+    data.data              → array of row objects (scatter-basic, d3_bar_chart,
+                             simple_accordion — all use dataset: data)
+    data.data.column_names → object mapping key → original column header string
+  data.values would only apply if you explicitly set dataset: values in template.yml.
+
+  Use column_names when you need the user's actual column header (e.g. for axis labels):
+    const x_label = data.data.column_names.x || "X";
+
+Multiple datasets (two separate data tables):
+  data:
+    - dataset: current
+      key: label
+      ...
+    - dataset: historical
+      key: label
+      ...
+
+  In JS: data.current and data.historical are separate arrays.
+  Each has its own column_names property.
+
+  Reconciling two datasets by name (elections-style):
+    In processData(), build a lookup from the secondary table and join it
+    to the primary by a shared key — typically the row label:
+
+      const historical_by_name = new Map(
+        data.historical.map(row => [row.name, row])
+      );
+      const rows = data.current.map(row => ({
+        ...row,
+        historical: historical_by_name.get(row.name) || null,
+      }));
+
+    data.current.column_names.values is an array of the user's column headers
+    for a type: columns binding — use it when you need the original header text
+    (e.g. to label bars or look up the corresponding historical column index).
+
+    Keep processData() in its own file. It is the only place where the two
+    datasets are joined. Chart rendering reads from the processed output only.
+
+Segments (connecting x1/y1 to x2/y2 per row):
+  Use extra column bindings in the same dataset — do NOT create a second dataset
+  for this. Add x2 and y2 as optional bindings alongside x and y:
+
+    - dataset: data
+      key: x2
+      name: X end
+      type: column
+      optional: true
+      data_type: [number]
+    - dataset: data
+      key: y2
+      name: Y end
+      type: column
+      optional: true
+      data_type: [number]
+
+  Rendering: swap the dots overlay for (or add alongside) a lines group:
+    lines_group
+      .selectAll("line")
+      .data(rows.filter(d => d.x2 != null && d.y2 != null), (d, i) => d.label ?? i)
+      .join("line")
+      .attr("x1", d => x_scale(+d.x))
+      .attr("y1", d => y_scale(+d.y))
+      .attr("x2", d => x_scale(+d.x2))
+      .attr("y2", d => y_scale(+d.y2));
+
+  IMPORTANT — scale domain must span both endpoints:
+    When x2/y2 are bound, pass all four values to chart-layout so the axes
+    include the full extent of the segments. If you only pass x and y the
+    right/top endpoint can fall outside the plot area and be clipped.
+
+      const all_x = rows.flatMap(d => d.x2 != null ? [+d.x, +d.x2] : [+d.x]);
+      const all_y = rows.flatMap(d => d.y2 != null ? [+d.y, +d.y2] : [+d.y]);
+      cl.xData(all_x).yData(all_y).update();
+
+    The same applies when using @flourish/facets: compute the combined extent
+    once across all rows (not per-facet), then pass it via xDomain/yDomain so
+    all panels share a consistent scale.
+
+Consistent binding key names (follow these so themes and AI work predictably):
+  x, y, label, color, size, group, filter, facet, metadata,
+  latitude, longitude, source, target, image
+  Note: the data binding key is facet (singular). state.facets (plural) is the
+  @flourish/facets module config — a different thing. Using facets as the data
+  binding key will silently overwrite the module config.
+
+
+================================================================================
+4. TEMPLATE.YML — IMPORTING MODULE SETTINGS
+================================================================================
+
+Modules bring their own settings panel sections. Import them like this:
+
+  settings:
+    - import: "@flourish/layout"
+      property: layout
+
+  # In state:
+  export const state = {
+    layout: {}    # Flourish populates this with module defaults
+  };
+
+Settings section order convention (follow scatter-basic as the reference):
+  [Chart name] → Colors → Axes → Legends → Popups →
+  Chart background → Number formatting → Layout
+
+Rules:
+- The FIRST section is always named after the chart type (e.g. "Scatter",
+  "Bar chart", "Box plot"). Never name it "Size" or anything generic.
+- Height/size settings (height_mode, aspect_ratio, etc.) go at the BOTTOM
+  of the chart-name section — no separate section, no new_section label.
+  Just place them after the chart-specific settings, before the next section.
+- Templates that calculate their own height in update() (pattern 2, e.g.
+  accordion) omit height settings — no aspect-ratio controls are needed.
+- "Layout" is reserved for the @flourish/layout import and must be last.
+  Do not name any custom section "Layout" — it will create a duplicate
+  heading because @flourish/layout generates its own "Layout" heading.
+- @flourish/number-localization is a number formatting module; if included,
+  put it under "Number formatting", not "Layout".
+- Aim for 6–8 sections total. Use new_section: "Subheading" to group
+  closely related settings within one section rather than creating extra
+  top-level sections.
+
+Overriding individual module settings:
+  - import: "@flourish/layout"
+    property: layout
+    overrides:
+      - property: some_setting
+        name: New name
+      - property: another_setting
+        hide_if: true
+
+Conditionally showing an entire imported block:
+  - import: "@flourish/colors"
+    property: color
+    show_if: show_color_section
+
+
+================================================================================
+5. MODULES — WHAT EXISTS AND HOW TO USE THEM
+================================================================================
+
+Module decision matrix — use this to pick modules before writing code:
+
+  repeated panels / grid of charts   → @flourish/facets
+  color varies by data               → @flourish/colors
+  discrete marks (dots, bars, etc.)  → @flourish/info-popup
+  labelled x/y axes                  → @flourish/chart-layout
+  filter / dropdown / slider control → @flourish/controls + @flourish/ui-styles
+  header, footer, legend containers  → @flourish/layout (always)
+  number formatting                  → @flourish/number-formatter
+  units in localized text            → @flourish/number-localization
+
+If a module from this list applies, use it. Do not hand-roll the equivalent.
+
+IMPORTANT — do not write to state.X properties you don't own:
+  When a module is imported via template.yml, Flourish owns state.<property>
+  and populates it from the user's settings panel. Writing to it in update()
+  silently overwrites the user's input on every render — sliders stop working,
+  checkboxes reset, etc. This class of bug is invisible in code review.
+
+  WRONG — silently clobbers the user's gutter slider:
+    function updateChart() {
+      state.facets.gutter_w = state.cell_gap;   // ← overwrites on every render
+      facets.update(state.facets);
+    }
+
+  RIGHT — keep user-controlled properties separate from computed values:
+    // In template.yml, hide gutter_w inside the @flourish/facets import via
+    // show_if: false overrides, then set it via a dedicated state property:
+    state.facets = { ...state.facets, gutter_w: state.cell_gap };
+    // Or pass computed overrides directly without touching state.facets:
+    facets.gutter_w(computedGutter).update();
+
+  Only write to state.<module>.X when you have hidden that property from the
+  user via show_if: false in template.yml overrides. If the user can see a
+  slider for it, never write to it from code.
+
+Install any module: npm install --save @flourish/<name>
+
+The ones used in most production templates:
+
+@flourish/layout        → header/footer/legend containers + responsive sizing
+                          import initLayout from "@flourish/layout"
+                          const layout = initLayout(state.layout)
+                          Call layout.update() in update(). Use:
+                            layout.getSection("primary") — main chart area
+                            layout.getPrimaryWidth() / getPrimaryHeight()
+                            layout.setHeight(px) — dynamic iframe height
+                          State property must be named: layout
+
+                          Dark canvas pattern — to make the full canvas dark,
+                          set these sub-properties in state.layout:
+                            layout: {
+                              background_color_enabled: true,
+                              background_color: "#111111",
+                              font_color: "#ffffff"
+                            }
+                          This darkens the whole canvas including margins and
+                          axis label areas. Then set tick/title/grid colours
+                          separately via state.x and state.y sub-properties.
+                          Do NOT use chart_bg for this — it only affects the
+                          plot area inside the axes, leaving a white border.
+
+@flourish/colors        → categorical and sequential colour palettes
+                          Use this module whenever colour varies by data —
+                          whether driven by a dedicated color binding OR by any
+                          other column (title, category, label). Both cases are
+                          data-driven and both need the module for theme support
+                          and per-item override controls in the settings panel.
+                          Do NOT hand-roll a palette array in state.
+                          For a single fixed colour (every mark the same colour),
+                          use type: color in template.yml instead.
+                          import createColors from "@flourish/colors"
+                          const colors = createColors(state.color)
+                          In update(): colors.updateColorScale(values_array)
+                            Pass an array of the string values that will be
+                            coloured. IMPORTANT: passing numbers puts the module
+                            into numeric/sequential mode — always pass strings:
+                            (data.values || []).map(d => d.label)
+                          colors.getColor(value) — returns hex colour for a value
+                          State property must be named: color
+
+                          Decision — which template.yml override to use:
+
+                          Color binding can be string OR number (scatter, bubble):
+                          use data.data.color.type conditions so the right panel
+                          appears automatically (see scatter-basic template.yml):
+                            overrides:
+                              - tag: discrete
+                                show_if: { data.data.color.type: string }
+                              - tag: numeric
+                                show_if: { data.data.color.type: number }
+                          These conditions do not work in local flourish run (see
+                          gotcha [1]). Tell the user they need a prerelease to
+                          test color/legend switching — see STARTING_PROMPT Stage 3.
+
+                          Color is ALWAYS categorical/string (forest plot, bar
+                          chart by category, ranked list): hide numeric and
+                          extend discrete — works correctly in local preview:
+                            overrides:
+                              - tag: numeric
+                                show_if: false
+                              - tag: discrete
+                                method: extend
+                          method: extend is required to surface the discrete
+                          palette settings in the panel. show_if: false alone
+                          hides numeric but discrete settings won't appear.
+                          No prerelease warning needed for categorical-only templates.
+
+                          Color is ALWAYS numeric/sequential (heatmap, choropleth):
+                            overrides:
+                              - tag: discrete
+                                show_if: false
+                              - tag: numeric
+                                method: extend
+
+                          Do NOT copy scatter-basic's data.data.color.type
+                          conditions into a categorical-only template — both panels
+                          will appear permanently in local preview.
+
+@flourish/legend        → discrete-color, continuous-color, and continuous-size
+                          legends
+                          import { createLegendContainer, createDiscreteColorLegend,
+                                   createContinuousColorLegend,
+                                   createContinuousSizeLegend } from "@flourish/legend"
+                          State property names:
+                            legend_container, legend_categorical,
+                            legend_continuous, legend_size
+
+                          Continuous size legend (circle-size legend):
+                            - property: legend_size
+                              import: "@flourish/legend/continuous-size"
+                          See wiring cheatsheet Pattern A2 below for the full
+                          scaleSqrt + autoTitle wiring. Standard binding key: size.
+
+@flourish/info-popup    → tooltips and locked popups
+                          import initPopup from "@flourish/info-popup"
+                          const popup = initPopup(state.popup)
+                          State property must be named: popup
+                          For extra per-row data (notes, sample sizes, sources)
+                          add a type: columns binding with key: metadata named
+                          "Info for popups" — do NOT create individual bindings
+                          for each extra field. See section 3 for the full
+                          pattern and JS access.
+
+@flourish/number-formatter    → prefix/suffix, decimal places, formatting
+                          ALWAYS pair with @flourish/number-localization.
+                          initFormatter returns a FACTORY — you must call it with
+                          localization.getFormatterFunction() to get a usable
+                          formatter. Calling it with no args silently returns
+                          broken output (or throws), which crashes update() before
+                          renderChart() runs — producing a completely blank chart.
+
+                          Correct pattern (mirrors scatter-basic/src/core/init.js):
+                            import initLocalization from "@flourish/number-localization";
+                            import initFormatter from "@flourish/number-formatter";
+                            const localization = initLocalization(state.localization);
+                            const getXFormatter = initFormatter(state.x_format);
+                            // then in update():
+                            const locale_fn = localization.getFormatterFunction();
+                            const xFormat = getXFormatter(locale_fn);
+
+                          State property names: x_format, y_format (one per axis)
+@flourish/number-localization → locale-aware separators (decimal point, thousands)
+                          REQUIRED when using @flourish/number-formatter (see above).
+                          State property name: localization
+
+@flourish/chart-layout  → creates axes and plot backgrounds (x, y, y2, chart_bg)
+
+                          Marks with radius (dots, circles) overflow the plot
+                          edge when their data value is at the axis min/max.
+                          Two things are needed:
+
+                          1. Keep axes at the data edge — use the two-pass
+                          inner_margins pattern (see scatter-basic/src/lib/chart.js):
+                            // Pass 1: zero inner_margins so axes sit at data min/max
+                            chart_layout...update({ inner_margins: { top:0, right:0, bottom:0, left:0 } });
+                            // Measure actual dot overflow vs existing tick margins
+                            const m = chart_layout.margins;
+                            // Pass 2: apply residual only if tick margins can't absorb it
+                            if (residual.top || ...) chart_layout.update({ inner_margins: residual });
+                          For typical dot sizes (5–10px) the residual is 0 and no
+                          inner_margins is applied, so y_scale(0) maps exactly to
+                          the x-axis line and a zero gridline coincides correctly.
+
+                          DO NOT use xPadding/yPadding. They stretch the scale
+                          domain, which shifts where data values map to pixels —
+                          y_scale(0) moves away from the axis line and a zero
+                          gridline appears as a second parallel line. They are
+                          also silently ignored for categorical axes.
+
+                          2. Render dots in an unclipped group — data_foreground
+                          has a clip-path that slices marks at the plot edge.
+                          Append a sibling group to chart_layout.chart once at
+                          init and render dots there:
+                            chart_layout.dots_overlay =
+                              chart_layout.chart.append("g").attr("class", "dots-overlay");
+                          Use data_foreground/data_background for gridlines,
+                          reference lines, and hulls (correctly clipped).
+
+                          Long y-axis labels (study names, country names, ranked
+                          categories) can be cut off. Call yTicks.autoLabelSpace()
+                          before .update() to set a maximum label width — labels
+                          that exceed it are auto-shortened with "…":
+                            chart_layout.yTicks.autoLabelSpace(200, "px")
+                          Units can be "px", "rem", or "fraction" (fraction of
+                          chart width). Prefer this over tick_label_space_mode:
+                          fixed, which creates a permanently wide left gutter.
+
+                          Common chart-layout sub-properties (set as state.x /
+                          state.y / state.chart_bg defaults — do NOT guess values,
+                          check node_modules/@flourish/chart-layout/settings.yml):
+                            x: { axis_visible: true }   — show/hide axis line+ticks
+                            x: { grid: true }           — show/hide gridlines
+                            x: { title: "" }            — axis label text
+                            x: { min_value: null }      — fixed lower bound (null=auto)
+                            x: { max_value: null }      — fixed upper bound (null=auto)
+                            chart_bg: { color: "#fff" } — plot area background color
+                          For valid enum strings (gridline_style, etc.) always verify
+                          against settings.yml — CSS names like "dashed" are WRONG (see [16]).
+
+                          xData/yData — explicit extents:
+                          Pass an explicit [min, max] array instead of raw row data
+                          whenever the default domain would be wrong:
+                            - Segments (x1→x2): both endpoints must be in scope
+                                const all_x = rows.flatMap(d => d.x2 != null
+                                  ? [+d.x, +d.x2] : [+d.x]);
+                                cl.xData(all_x).yData(all_y).update();
+                            - Bars/lollipops: force 0 into the domain (see gotcha [13])
+                            - Shared scales (SPLOM, faceted charts): compute extent
+                              across all groups first, then pass it to every panel
+                            - Fixed/animated domains (drag-to-pan, locked zoom):
+                                cl.xData([x_min, x_max])
+
+                          Coordinate space — chart_layout.chart is SVG-absolute:
+                          Unlike the standard D3 margin convention (where you
+                          translate a <g> by (margin.left, margin.top)), the
+                          chart_layout.chart group has NO SVG transform. Values
+                          from x_scale() and y_scale() are already in SVG-root
+                          coordinate space:
+
+                            x_scale(val)        → SVG x-coordinate of that value
+                            y_scale(val)        → SVG y-coordinate of that value
+                            y_scale.range()[0]  → SVG y of the x-axis line
+                            y_scale.range()[1]  → SVG y of the chart top (NOT 0)
+
+                          Marks appended to chart_layout.dots_overlay or to the
+                          SVG root can both use x_scale()/y_scale() values directly
+                          as attributes — no additional margin offset is needed.
+
+                          The common failure: assuming chart_layout.chart has a
+                          translate transform, then writing
+                            label.attr("y", -10)   // means 10px above SVG origin
+                          when the chart top is at y_scale.range()[1] (e.g. 60px).
+                          Always use y_scale(value) or y_scale.range()[1] for
+                          positions relative to the chart area.
+
+                          inner_margins shift the scale ranges: calling
+                          chart_layout.update({ inner_margins: { top: N } }) moves
+                          y_scale.range()[1] downward by N pixels. Compute all mark
+                          positions AFTER the second chart_layout.update() call.
+
+Module units — rem not pixels:
+  @flourish/facets gutter and padding settings (gutter_w, gutter_h, padding)
+  are in rem, not pixels. state.facets.gutter_w: 1 means 1rem (~16px).
+  Passing a large pixel value (e.g. 22) will explode the grid outward.
+  Use layout.remToPx() to convert if you need to derive a pixel value from a rem setting.
+
+Additional modules:
+@flourish/facets        → small multiples / grid of charts (state: facets)
+                          Use when the visual is a grid of charts, one chart per
+                          group, or separate repeated panels. Facets works for
+                          any chart type — not just axis charts. Radial, orbital,
+                          network, and custom D3 charts can all draw inside facets
+                          by appending marks to facet.node.
+                          State property must be named: facets
+                          See Reference/scatter-facets-and-filter/ for the full wiring pattern.
+
+                          Key wiring pattern:
+                            import initFacets from "@flourish/facets";
+                            const facets = initFacets(state.facets);
+                            // in draw() — facets needs a <g> inside the SVG:
+                            const g = svg.append("g").node();
+                            facets.appendTo(g);
+                            // in update():
+                            facets
+                              .width(layout.getPrimaryWidth())
+                              .duration(state.animation_duration)
+                              .facetAspect(1.2)   // per-panel aspect; clears .height()
+                              .data(groups, d => d.name)
+                              .update(function(facet) {
+                                // Store chart_layout ON the node, not in a name-keyed
+                                // dict. When facets removes and recreates a node (e.g.
+                                // after filtering), the new node has no __chart_layout
+                                // and gets re-initialised cleanly. A dict would keep a
+                                // stale reference to the detached node → blank panels.
+                                if (!facet.node.__chart_layout) {
+                                  facet.node.__chart_layout = initChartLayout(facet.node, props);
+                                }
+                                const cl = facet.node.__chart_layout;
+                                cl.width(facet.width).height(facet.height)
+                                  .xData(rows, d => d.x).yData(rows, d => d.y)
+                                  .update();
+                              });
+                            // Read back computed height AFTER update():
+                            const h = facets.height();
+                            layout.setHeight(h);
+                            svg.attr("height", h);
+
+                          Height strategy (mirrors production template-scatter):
+                            - Fixed-height embed → facets.height(layout.getPrimaryHeight())
+                            - Multiple panels    → facets.facetAspect(ratio) [use this]
+                            - Single panel       → facets.height(computedHeight)
+                          Use facetAspect(ratio) to control per-cell shape — the
+                          module computes the total grid height from ratio × cell_width.
+                          Never use facets.height(fixed) for multi-panel: facets has
+                          its own internal margins that it subtracts, so a fixed total
+                          height squashes cells rather than sizing them to the ratio.
+                          After facets.update(), read facets.height() to get the
+                          computed total and pass it to layout.setHeight() and svg.
+
+                          IMPORTANT — D3 version compatibility:
+                          @flourish/facets v1.x uses d3-selection v1 internally.
+                          @flourish/facets v2+ and v4+ are compatible with d3-selection
+                          v3 — no dedupe needed. If you must use an older facets version,
+                          pin d3-selection to v1 and deduplicate in rollup.config.js.
+                          See SDK_BASICS gotcha [11] for the full explanation.
+
+@flourish/controls      → interactive dropdowns, buttons, sliders.
+                          See Reference/scatter-facets-and-filter/ for the full wiring pattern.
+
+                          Key wiring pattern:
+                            import { createControlsContainer, createControls } from "@flourish/controls";
+                            import { createGeneralControlsStyle, createDropdownStyle } from "@flourish/ui-styles";
+                            // at module scope:
+                            const my_control = createControls(state.my_control);
+                            const controls_container = createControlsContainer(state.controls_container);
+                            const controls_style = createGeneralControlsStyle(state.controls_style, ".fl-control");
+                            const dropdown_style = createDropdownStyle(state.dropdown_style, ".fl-control-dropdown");
+                            // in draw() — after layout sections exist:
+                            controls_container.appendTo(layout.getSection("controls")).add([my_control]);
+                            my_control.on("change", (value) => { state.my_value = value; update(); });
+                            // in update():
+                            controls_style.update();  // must come before container.update()
+                            dropdown_style.update();
+                            controls_container.update();
+                            my_control.options(["All", ...values]).index(i).visible(show).update();
+                          template.yml imports:
+                            property: controls_container  → "@flourish/controls/container"
+                            property: my_control          → "@flourish/controls"
+                            property: controls_style      → "@flourish/ui-styles/controls-style"
+                            property: dropdown_style      → "@flourish/ui-styles/dropdown-style"
+
+@flourish/axes-highlights → reference lines drawn on the axes of a chart
+                          (horizontal/vertical bands or lines at a specific value).
+                          Designed to pair with @flourish/chart-layout or @flourish/axes.
+
+                          For a non-faceted chart:
+                            import initAxesHighlights from "@flourish/axes-highlights";
+                            const axes_highlights = initAxesHighlights(state.axes_highlights);
+                            // in update(), AFTER chart_layout.update():
+                            axes_highlights
+                              .appendTo(select(some_g_above_data))
+                              .chartLayout(chart_layout)
+                              .update();
+
+                          For a faceted chart, axis highlights need a container <g>
+                          above all facet groups in the SVG, then a D3 join over
+                          facets.facets() AFTER facets.update() has run:
+                            // in draw():
+                            const highlights_container = svg.append("g").attr("id", "axes-highlights");
+                            // in update(), after facets_chain.update(...):
+                            const hl_groups = highlights_container
+                              .selectAll(".hl-facet")
+                              .data(facets.facets());
+                            hl_groups.enter().append("g").classed("hl-facet", true)
+                              .merge(hl_groups)
+                              .each(function(facet) {
+                                axes_highlights
+                                  .appendTo(select(this))
+                                  .chartLayout(facet.node.__chart_layout)
+                                  .facetName(facet.name)
+                                  .offset({ x: facet.x, y: facet.y })
+                                  .update();
+                              });
+                            hl_groups.exit().remove();
+                          Note: facet.x and facet.y are the pixel offsets of each panel
+                          within the SVG — provided by the facets module but undocumented.
+                          For numeric x/y data, no numberParser is needed. For date or
+                          string axes, pass a parser via .numberParser(fn) using
+                          @flourish/interpreter to convert the user's text input.
+
+@flourish/pocket-knife  → utility functions for text measurement and misc helpers.
+                          Import only what you need (tree-shaken):
+                            import { getTextDimensions, wrapStringToLines } from "@flourish/pocket-knife";
+                          Key functions:
+                            getTextDimensions(string, font) → { width, height }
+                            getTextWidth(string, font) → number
+                            wrapStringToLines(text, font_styles, max_lines, max_width) → string[]
+                            isPale(color_value) → boolean  (useful for text-on-dot contrast)
+                          Use for: measuring label text before positioning, wrapping long
+                          labels to fit within a fixed width.
+                          Do NOT use pocket-knife's remToPx — use layout.remToPx() instead
+                          (it's already available from @flourish/layout).
+
+State property names matter — themes depend on them being consistent.
+The required names are listed in the module entries above.
+
+--- Module wiring cheatsheet (single-file template) ---
+
+Use these snippets when building from d3_bar_chart or any single-file template
+that needs popup/legend/formatter wiring. The scatter-basic starters show the
+same patterns split across init.js, popup.js, and chart.js — this is the
+single-file equivalent.
+
+  Pattern A — colours + discrete legend (categorical data)
+    import createColors from "@flourish/colors";
+    import { createLegendContainer, createDiscreteColorLegend } from "@flourish/legend";
+    const colors = createColors(state.color);
+    const legend_container = createLegendContainer(state.legend_container);
+    const legend = createDiscreteColorLegend(state.legend_categorical);
+    // in createDom():
+    legend_container.appendTo(layout.getSection("legend")).add(legend);
+    // in update():
+    colors.updateColorScale(categories);          // categories = string[]
+    legend.visible(true).data(categories, colors.getColor);
+    legend_container.update();
+
+  Pattern A2 — continuous circle-size legend
+    import { scaleSqrt } from "d3-scale";
+    import { max } from "d3-array";
+    import { createLegendContainer, createContinuousSizeLegend } from "@flourish/legend";
+    const legend_container = createLegendContainer(state.legend_container);
+    const legend_size = createContinuousSizeLegend(state.legend_size);
+    // in createDom():
+    legend_container.appendTo(layout.getSection("legend")).add(legend_size);
+    // in update():
+    const size_values = (data.values || []).map(d => +d.size).filter(Number.isFinite);
+    const max_size = max(size_values) || 0;
+    const size_scale = scaleSqrt()
+      .domain([0, max_size])
+      .range([0, state.max_radius]);
+    legend_size
+      .visible(size_values.length > 0)
+      .scale(size_scale)
+      .symbolType("circle")
+      .autoTitle((data.values.column_names && data.values.column_names.size) || "Size");
+    legend_container.update();
+
+  Pattern B — number formatter + localization
+    See @flourish/number-formatter module entry above and gotcha [14].
+    The key rule: initFormatter() returns a factory — call it with
+    localization.getFormatterFunction() in update(), never with no args.
+
+  Pattern C — popup with colours and formatter
+    import initPopup from "@flourish/info-popup";
+    const popup = initPopup(state.popup);
+    // in update():
+    // Replace data.data with data.<your-dataset-name> from template.yml.
+    // Starters use dataset: data → data.data. Using data.values only if
+    // template.yml has dataset: values.
+    const column_names = data.data && data.data.column_names
+      ? Object.fromEntries(Object.entries(data.data.column_names).filter(([,v]) => v))
+      : {};
+    const locale_fn = localization.getFormatterFunction();
+    const fmt = getValueFormat(locale_fn);
+    popup
+      .titleKey("group")
+      .getLockedPosition(function(id) {
+        const el = document.getElementById(id);
+        return el ? [el, el.__data__] : null;
+      })
+      .setColumnNames(column_names)
+      .setFormatters({ value: fmt })
+      .update();
+    // on marks:
+    .on("mouseover", function() { popup.mouseover(this, this.__data__); })
+    .on("mouseout",  function() { popup.mouseout(); })
+    .on("click", function(e) { e.stopPropagation(); popup.click(this, this.__data__, this.id); })
+    // on the svg root:
+    svg.on("click", function(e) { if (e.target === this) popup.clickout(); });
+
+--- Flourish themes and brand colours ---
+
+Paying Flourish customers can create brand themes in Flourish Studio that
+define custom colour palettes, fonts, and styles. When a user applies a theme
+to a visualisation, the theme's colours are automatically injected into any
+@flourish/colors instance — but only if the state property is named exactly
+"color". This means a template that includes the colors module gives paying
+customers automatic brand colour support with no extra code.
+
+Include @flourish/colors in any template where colour choice matters.
+Do not rename the state property (e.g. "chart_color") — it must be "color"
+for theme wiring to work. This only applies to customers who have already
+created Flourish themes; for all other users it behaves as a normal palette
+picker.
+
+
+================================================================================
+6. WINDOW.FLOURISH API
+================================================================================
+
+Flourish.fixed_height
+  false → responsive embed or local flourish run — calling setHeight() resizes the iframe
+  true  → explicit-height context (fixed iframe, /preview, /embed) — setHeight() is a no-op
+
+layout.setHeight(px)
+  Sets the primary container height and resizes the embed iframe to fit.
+  Use this rather than Flourish.setHeight() directly — the layout wrapper also
+  updates the primary section height correctly.
+  Pass null to reset any template-set height and defer to Flourish's default
+  breakpoint-based heights. Always call setHeight(null) when entering a
+  fixed-height context or "off" mode, so a previously-set height is cleared.
+
+--- Height mode settings ---
+
+Most templates expose height_mode with two choices: Auto and Aspect ratio.
+
+  Auto         → template computes a sensible default height from width
+  Aspect ratio → user controls the width:height ratio; desktop + mobile values
+
+In a fixed-height embed (fixed iframe, /preview, /embed) both modes are ignored
+and the chart fills the container — no third option needed. The production
+scatter template uses exactly these two choices.
+
+Note: the local /preview page (localhost:1685/preview) is itself a fixed-height
+context — Flourish.fixed_height is true there. If the chart looks different at
+/preview vs the root URL during local development, that is expected behaviour,
+not a bug. Test responsive height at the root URL (localhost:1685).
+
+Some templates add a third choice, Fill container (value: "off"), for cases
+where users might want to opt into container-filling behaviour even in a
+responsive embed. Only add it when that is a real use case for the chart.
+
+The canonical getChartHeight() pattern (used in both starters):
+
+  function getChartHeight(W) {
+    if (Flourish.fixed_height || state.height_mode === "off") {
+      layout.setHeight(null);          // reset any previously set height
+      return layout.getPrimaryHeight();
+    }
+    if (state.height_mode === "aspect") {
+      const aspect = window.innerWidth < state.aspect_breakpoint
+        ? state.aspect_ratio_mobile : state.aspect_ratio;
+      const H = W / Math.max(+aspect || 1, 0.1);
+      layout.setHeight(H);
+      return H;
+    }
+    // auto — pick the right formula for your chart type:
+    // Rectangular (scatter, line, box plot): layout.remToPx(30)   ← scatter-basic default
+    //   Or: Math.min(W * 0.65, layout.remToPx(28))               ← d3_bar_chart default
+    //   Both are valid; remToPx(30) is fixed height, Math.min caps at width × 0.65.
+    // Circular/radial (pie, rose, radar):   W * shape_height_ratio
+    //   where shape_height_ratio is 1 for circle/square, Math.sqrt(3)/2 for hexagon, etc.
+    const H = layout.remToPx(30);   // scatter-basic default; d3_bar_chart uses Math.min(W * 0.65, layout.remToPx(28))
+    layout.setHeight(H);
+    return H;
+  }
+
+getChartHeight() calls setHeight() as a side-effect so the caller never needs
+to think about when to call it. Call getChartHeight() in every update(), not
+just when height might have changed — mode switches need the setHeight(null)
+reset to take effect.
+
+--- Height categories ---
+
+Most charts fall into one of three categories:
+
+  A. Width-proportional (radial, polar, pie, map, chord, square grids)
+     auto height = W * shape_height_ratio  (e.g. circle: W * 1, hexagon: W * √3/2)
+     Keeps the plot square. Do NOT use the rem-based rectangular default here —
+     it creates dead vertical space on wide screens.
+
+  B. Rectangular (scatter, bar, line, box plot, candlestick)
+     scatter-basic:  layout.remToPx(30)                        — fixed-height default
+     d3_bar_chart:   Math.min(W * 0.65, layout.remToPx(28))    — capped at width × 0.65
+     Both are valid. remToPx(30) is simpler; the Math.min form prevents the chart
+     growing too tall on very wide screens.
+
+  C. Content-driven (accordion, lists, tables, cards)
+     Height is computed from rendered content, not from width.
+     Call layout.setHeight(rendered_height) in update(). No resize guard needed
+     if content height only changes when data/settings change (not on clicks).
+     The accordion uses this: height = all headers + tallest content panel.
+
+  D. Interactive height (advanced, rarely needed)
+     Use ONLY when user interaction changes total rendered height after update()
+     has finished — e.g. multiple accordions can be opened/closed simultaneously
+     and the iframe must grow and shrink on each click.
+     The simple_accordion starter uses category C (fixed total height) — do not
+     copy its click handler for category D. Requires a resize guard.
+
+     Do not re-render the whole DOM from the click handler. layout.setHeight()
+     can trigger window.onresize; if onresize calls update(), the DOM may be
+     rebuilt mid-transition and panels can flash closed/open.
+
+     Pattern:
+     - In window.onresize, ignore events where width and fixed_height mode have
+       not changed (width-only resize should not retrigger a height recompute).
+     - Before toggling classes, freeze currently open panels to their current px
+       height so CSS transitions have a concrete start value.
+     - Toggle only the clicked item's DOM state and your stored open-state map.
+     - During the CSS transition, report live height:
+         layout.setHeight(container.getBoundingClientRect().height)
+     - After transition ends, measure final height from a hidden clone where open
+       panels are forced open and closed panels forced closed, then call
+       layout.setHeight(final_height).
+     - The root measuring element must not have min-height: 100% — once the
+       iframe grows it will never measure smaller again.
+
+     Test this at localhost root (/), not /preview — /preview is fixed-height
+     and setHeight() is a no-op there, which masks the resize loop entirely.
+
+Flourish.environment
+  "sdk"           → local flourish run
+  "editor"        → Flourish visualization editor
+  "story_editor"  → Flourish story editor
+  "live"          → published visualization or story
+  "preview"       → full-window preview
+
+Flourish.is_read_only
+  true when the user can't save changes (published/preview contexts).
+  Use to hide interactive UI controls that would have no effect.
+
+Flourish.warn({ message, explanation })
+  Displays a warning in the editor UI. Cleared on every update() call.
+  Use for invalid data, incompatible settings combinations, etc.
+  Example:
+    Flourish.warn({
+      message: "Negative values not supported",
+      explanation: "Row " + i + " contains " + val
+    });
+
+Flourish.static_prefix
+  Path to the template's /static folder.
+  Use for bundled assets: Flourish.static_prefix + "/logo.png"
+
+Flourish.screenshot()
+  Called by Flourish before generating a static image of the visualisation.
+  Override it if you need to prepare the DOM for image capture (e.g. hide
+  interactive overlays, flush CSS transitions):
+    Flourish.screenshot = function() { /* prepare DOM */ }
+
+
+================================================================================
+7. FILE STRUCTURE
+================================================================================
+
+template.yml     → configuration: id, name, sdk_version, build, settings, data
+                   The id must be globally unique across all Flourish templates.
+                   It becomes part of the published URL. Use kebab-case.
+GUIDE.md         → markdown shown on the template's overview page in Flourish Studio.
+                   Include: what the template is for, data format expected, key settings.
+template.js      → compiled output (never edit directly)
+src/index.js     → source entry point (or src/core/*.js for multi-file layout)
+less/style.less  → styles (compiled to static/style.css)
+static/          → bundled assets (images, fonts) — reference via static_prefix
+data/            → sample CSV files — filename becomes the data table name in the editor
+index.html       → base HTML — omit and Flourish supplies a sensible default
+package.json     → npm scripts: "build": "rollup -c", "less": "lessc ..."
+
+Two source layouts — both valid:
+  Single-file (accordion, d3_bar_chart):  src/index.js contains everything
+  Multi-file  (scatter-basic):            src/index.js re-exports from
+                                          src/core/{init,data,state,draw,update}.js
+                                          src/lib/{chart,legend,popup,...}.js
+
+
+================================================================================
+8. COMMON PATTERNS
+================================================================================
+
+--- processData(): separate data processing from rendering ---
+
+For any non-trivial data transformation, compute derived fields once in a
+processData() function before renderChart() runs. Store results in a
+module-level variable. Call processData() from update() before rendering.
+
+  let processed = [];
+
+  function processData() {
+    processed = (data.values || []).map(function(row) {
+      return {
+        label: row.label,
+        value: +row.value,
+        pct: +row.value / total   // derived field
+      };
+    });
+  }
+
+  export function update() {
+    layout.update();
+    processData();
+    renderChart();
+  }
+
+--- State mutation from interaction (legend/control clicks) ---
+
+Interaction handlers can mutate state directly then call update():
+
+  legend_item.addEventListener("click", function() {
+    const idx = state.hidden_series.indexOf(key);
+    if (idx === -1) state.hidden_series.push(key);
+    else state.hidden_series.splice(idx, 1);
+    update();
+  });
+
+--- window.onresize ---
+
+Set in draw(), not in update(). For charts that use layout module:
+
+  export function draw() {
+    createDom();
+    update();
+    window.onresize = update;   // full re-render on resize
+  }
+
+For almost all templates pattern 2 applies and the simple form above is
+sufficient. Pattern 3 (interactive height, rare) requires a resize guard —
+see section 6 for when it applies.
+
+
+================================================================================
+9. STYLE CONVENTIONS
+================================================================================
+
+Numbers:
+- Animation duration in milliseconds for JS transitions (0–2000 is a sensible range)
+- CSS transition durations are in seconds: `transition: 0.3s ease`
+- Opacity 0–1 (not 0–100)
+- Always add min/max/step to number settings where meaningful
+
+Alignment values:
+- Use "start"/"end" not "left"/"right" — respects RTL read direction setting
+
+Text colour fallback pattern:
+  const color = state.text_color || state.layout.text_color;
+
+Sizes in rems so they scale across breakpoints. Use layout.remToPx() to
+convert when you need a pixel value (e.g. for D3 scales).
+
+Mobile-first layout:
+- Templates must render correctly at a minimum viewport width of 375px.
+- Use rems for font sizes and label spacing throughout — never px for text.
+- On narrow viewports, labels often need to be abbreviated, rotated, or hidden.
+  For label collision strategies (radial, dense axes), read the @flourish/pocket-knife
+  section below — getTextDimensions and wrapStringToLines are the main tools.
+- Test at 375px, 768px, and 1200px+ by resizing the browser during local dev.
+
+
+================================================================================
+10. PUBLISHING WORKFLOW
+================================================================================
+
+  flourish run        → start dev server at localhost:1685 (auto-watches and
+                        rebuilds JS/CSS on save — no need to run npm manually)
+
+  Two common startup gotchas:
+  - template.yml is validated AFTER the JS+LESS build completes. A "Build script
+    finished" message does not mean the server started — scroll past it to check
+    for "Failed to start server" errors from template.yml validation.
+  - The engines field in package.json may not match the user's installed Node
+    version. This prints a warning on npm install but the build still succeeds.
+    Do not try to change the Node version to fix it.
+
+Testing workflow:
+  1. Open http://localhost:1685 in the browser first — quick check that marks
+     render and nothing is blank. HTTP 200 from the server is not enough.
+  2. flourish publish --prerelease  → when the user wants to test with their
+     own data. Publishes a private version in Flourish Studio with a Data tab.
+     Also required to test data.data.color.type show_if conditions (see [1]).
+  3. flourish publish --release     → promote prerelease to full release.
+
+Breaking changes: renaming a setting property or data binding key is a breaking
+change — existing visualisations will lose that stored value.
+
+
+================================================================================
+11. KNOWN GOTCHAS
+================================================================================
+
+[1] data.data.color.type conditions do not work in local flourish run
+------------------------------------------------------------------------
+In template.yml, show_if/hide_if conditions that check a data binding's type
+(e.g. data.data.color.type: string) do nothing in local `flourish run`. Both
+panels appear simultaneously. They work correctly in Flourish Studio.
+
+This only affects templates where the color binding can be string OR number
+(e.g. scatter, bubble). Categorical-only templates hide the numeric panel with
+`show_if: false` unconditionally — that works fine locally, no action needed.
+
+DO still use data.data.color.type conditions for string-OR-number templates —
+they are correct and work once published. When you add them, tell the user:
+  "The color panel and legend switching between categorical and sequential modes
+   won't be visible in local preview — it's a known SDK limitation. Open the
+   chart in your browser first to check the rendering looks right, then publish
+   a prerelease when you want to test the color/legend behaviour with real data."
+
+--------------------------------------------------------------------------------
+
+[2] layout.update() must be called AFTER populating all layout sections
+------------------------------------------------------------------------
+The layout module checks whether sections (legend, header, etc.) have content
+when layout.update() runs. Empty sections get hidden. Content added after
+layout.update() will be invisible until the next update cycle.
+
+Rule: call layout.update() LAST in update() — after legend, popup, and any
+other section-filling calls.
+
+Exception: templates with no collapsible sections (accordion, d3_bar_chart)
+can call layout.update() first since nothing is being conditionally shown.
+
+--------------------------------------------------------------------------------
+
+[3] Module instances must be created at module scope, not inside draw()
+------------------------------------------------------------------------
+All @flourish module instances must be created at module scope as constants.
+Do NOT create them inside draw() or any function called from draw().
+
+Why: ES module imports are evaluated once. Creating instances inside a function
+can cause undefined references when circular imports between files resolve.
+
+Correct pattern (single-file): const layout = initLayout(state.layout)
+at module scope, after state is declared. See accordion/d3_bar_chart.
+
+Correct pattern (multi-file): create all instances in init.js at module scope,
+export them, import into draw.js and update.js.
+
+--------------------------------------------------------------------------------
+
+[4] legend.visible(false) state persists across updates
+------------------------------------------------------------------------
+The @flourish/legend instance stores a private _visible flag set by .visible().
+Only call .visible(false) when you know the other legend type is active.
+Never call it in a fallback/else branch — the flag will stay false permanently.
+
+Symptom: legend never appears on first load but shows after toggling a setting.
+
+--------------------------------------------------------------------------------
+
+[5] Accessing data.data.metadata — use optional chaining, not a fallback
+------------------------------------------------------------------------
+data.data.metadata holds column type information (e.g. whether a bound column
+is "string", "number", or "datetime"). Access it with optional chaining:
+
+  data.data.metadata.color?.type === "string"   // true / false / undefined
+  data.data.metadata.color?.type === "number"
+
+If metadata is not yet populated, `?.type` returns `undefined`. Comparing
+`undefined === "string"` gives `false` — which is the correct behaviour for
+legend/panel visibility (hidden until type is known). No fallback needed.
+
+Production pattern from scatter template (legend.js):
+  categorical_legend.visible(data.data.metadata.color?.type === "string")
+  continuous_legend.visible(data.data.metadata.color?.type === "number")
+
+For bindings where absence means "skip this block entirely" (e.g. optional
+metadata columns), guard with an explicit check before accessing:
+  if (!data.data.metadata.popup_metadata) return;
+  // safe to access data.data.metadata.popup_metadata below
+
+--------------------------------------------------------------------------------
+
+[6] Pre-initialise data with the expected shape
+------------------------------------------------------------------------
+Initialise data bindings with their expected structure so settings conditions
+evaluate correctly before data loads:
+
+  export const data = { values: [] };    // correct
+  export const data = {};                // can cause show_if/hide_if to misfire
+
+--------------------------------------------------------------------------------
+
+[7] layout.setLegendPosition() does not exist in @flourish/layout v8+
+------------------------------------------------------------------------
+Do not call layout.setLegendPosition(). It was removed in v8. Legend position
+is controlled automatically by the layout settings imported in template.yml.
+
+--------------------------------------------------------------------------------
+
+[8] Flourish.setHeight() vs layout.setHeight()
+------------------------------------------------------------------------
+Prefer layout.setHeight(px) over Flourish.setHeight(px) directly.
+The layout wrapper clears the 100vh height that layout.update() sets on the
+wrapper element and correctly updates the primary section height.
+Calling Flourish.setHeight() directly leaves the wrapper at 100vh, which can
+clip content or cause scroll issues.
+
+See section 6 for the three height patterns and when each applies. Pattern 3
+(interactive height) requires a resize guard — only use it when canvas height
+must genuinely change from a click and you cannot size for worst-case in update().
+
+--------------------------------------------------------------------------------
+
+[9] D3 circular dependency warnings in rollup
+------------------------------------------------------------------------
+D3 packages contain circular ES module imports. Rollup warns about these
+but they are harmless. Suppress them in rollup.config.js:
+
+  onwarn: function(warning, warn) {
+    if (warning.code === "CIRCULAR_DEPENDENCY") return;
+    warn(warning);
+  }
+
+--------------------------------------------------------------------------------
+
+[10] @flourish/colors goes into numeric mode when updateColorScale receives numbers
+------------------------------------------------------------------------
+colors.updateColorScale() infers scale type from the values you pass. If any
+value is a number, the module switches to numeric/sequential mode — the
+categorical palette picker stops working and the numeric settings panel appears.
+
+What to pass depends on whether your template supports numeric color or not:
+
+  Categorical-only (labels are always strings — bar chart, accordion, etc.):
+    Always coerce to String(). Data bindings can return numbers even when you
+    expect strings, and a number sneaking in silently breaks the color panel.
+      colors.updateColorScale(rows.map(d => String(d.label)));
+      colors.getColor(String(d.label))   // per-datum in the data join
+
+  String-OR-number color column (e.g. scatter-basic where color column may be
+    a category OR a numeric value):
+    Pass raw values — the module uses the presence of numbers to switch into
+    sequential mode automatically. String() coercion would prevent that.
+      colors.updateColorScale(rows.map(d => d.color));
+      colors.getColor(d.color)
+
+  colors.updateColorScale([0]);   // intentional if you want sequential mode
+                                  // unintentional bug if you expected categorical
+
+For a chart where all marks should default to the same colour but custom
+per-label overrides must still work, set a single-colour default palette
+in state and use getColor(d.label) per mark:
+
+  export const state = {
+    color: { categorical_palette: ["#4e79a7"] },  // one colour → all bars same
+    ...
+  };
+  // updateColorScale still receives all labels so overrides match correctly:
+  colors.updateColorScale(data.values.map(d => d.label));
+  .attr("fill", d => colors.getColor(d.label))
+
+  The user can still override individual bars via the custom overrides box
+  (e.g. "A: #ff0000") because the label is the key. If the palette is later
+  changed to multi-colour, each label gets a distinct colour.
+
+To permanently hide the numeric/sequential settings for a categorical-only
+template, use show_if: false on numeric AND method: extend on discrete:
+  overrides:
+    - tag: numeric
+      show_if: false
+    - tag: discrete
+      method: extend
+method: extend is required — without it the discrete palette settings don't
+appear in the panel even though numeric is hidden.
+
+--------------------------------------------------------------------------------
+
+[11] @flourish/facets v1.x + d3-selection version conflict (legacy — facets v2+ is unaffected)
+------------------------------------------------------------------------
+This only applies to @flourish/facets v1.x. Facets v2+ and v4+ are compatible
+with d3-selection v3 — no deduplication needed. If you are using the current
+reference template (scatter-facets-and-filter, facets ^4.2.1) this gotcha does
+not apply. Only read further if you are maintaining a template pinned to facets v1.
+
+@flourish/facets v1.x depends on d3-selection v1. If your template declares
+d3-selection v3 in package.json, the bundle ends up with two copies of
+d3-selection — each with its own prototype.
+
+d3-transition works by monkey-patching the d3-selection prototype it sees at
+import time, adding .transition() to selections. When two prototypes exist,
+.transition() is only added to one of them. Selections created by the other
+copy silently lack .transition().
+
+Symptom: facet outer groups are created, fl-facet-primary groups exist, but
+render callbacks never fire — marks are never drawn, SVG height stays wrong,
+facet titles remain in their initial state. The facets module got partway
+through its internal update() then failed on a .transition() call before
+invoking your render callback.
+
+Fix:
+  1. Pin d3-selection to v1 in package.json:
+       "d3-selection": "^1.4.2"
+  2. Force deduplication in rollup.config.js:
+       nodeResolve({ dedupe: ["d3-selection"] })
+
+Also audit your template for D3 v3 idioms that don't exist in v1:
+  - selection.join() — not in v1. Use enter/merge/exit:
+      const marks = g.selectAll("circle").data(rows, d => d.id);
+      marks.enter().append("circle").merge(marks).attr("r", 5);
+      marks.exit().remove();
+  - Event handlers — v1 passes (d, i, nodes), not (event, d):
+      .on("click", function(d) { ... })   // v1 style
+
+--------------------------------------------------------------------------------
+
+[12] SVG stacking is DOM order, not z-index
+------------------------------------------------------------------------
+In SVG, elements are painted in DOM order — a later sibling always renders on
+top. CSS z-index has no effect inside SVG.
+
+When a chart has multiple overlapping layers (data marks, hit areas, range
+selectors, handles, labels), create stable named <g> groups in DOM order and
+render each element type into its own group:
+
+  const g_lines   = svg.append("g");   // painted first — behind everything
+  const g_overlay = svg.append("g");   // selection / dim rectangles
+  const g_handles = svg.append("g");   // drag handles
+  const g_labels  = svg.append("g");   // painted last — always on top
+
+Establish these groups in draw() so their DOM order never changes across
+update() calls. Do NOT append new container groups inside update() — they
+accumulate on every render.
+
+After D3 data joins, call .raise() on any element that must stay on top.
+Set pointer-events: none on non-interactive lines and labels so they do not
+block drag/click events on layers beneath them.
+
+When selecting elements for update, always scope the selector to the specific
+layer group — never use a broad descendant selection across a shared parent:
+  g_data.selectAll("line.candle-wick")         // correct — scoped to layer
+  chart_layout.data_foreground.selectAll("line")  // wrong — matches reference
+                                                   // lines, whiskers, gridlines
+
+This is the most common cause of interactive chart elements (labels, reference
+lines, axis marks) disappearing when an overlay or drag rectangle is redrawn.
+
+A helper that is safe to call in update() — creates the group on the first call
+and returns the existing one on every subsequent call:
+
+  function ensureLayer(parent, className) {
+    const layer = parent.selectAll("g." + className).data([null]);
+    const enter = layer.enter().append("g").attr("class", className);
+    layer.exit().remove();
+    return enter.merge(layer);
+  }
+  // Usage in update():
+  const g_marks = ensureLayer(svg, "marks");
+  const g_labels = ensureLayer(svg, "labels");
+
+--------------------------------------------------------------------------------
+
+[13] Bar charts: force 0 into the value-axis domain
+------------------------------------------------------------------------
+For bar, bullet, lollipop, or waterfall charts, the value axis must include
+0 so bars draw correctly from the baseline. If you pass raw data to xData/
+yData and all values are positive, chart-layout sets the domain to
+[min_value, max_value]. Then x_scale(0) returns a large negative pixel value —
+bars start hundreds of pixels off-screen and the chart appears completely blank.
+
+Always compute the extent explicitly and clamp to 0:
+
+  const values = (data.data || []).map(d => +d.value);
+  const x_min = Math.min(0, ...values);
+  const x_max = Math.max(0, ...values);
+
+  chart_layout
+    .xData([x_min, x_max])   // explicit extent — do NOT pass the raw data array
+    .yData(data.data, d => d.label)
+    .update();
+
+  const x0 = x_scale(0);    // now guaranteed to be inside the plot area
+
+For vertical bar charts, apply the same treatment to yData instead of xData.
+
+This is the most common reason a bar chart renders completely blank.
+
+--------------------------------------------------------------------------------
+
+[14] number-formatter must be called with a locale function — never with no args
+------------------------------------------------------------------------
+@flourish/number-formatter's initFormatter() returns a FACTORY, not a formatter.
+You must call the factory with localization.getFormatterFunction() to get a
+usable formatter. Calling it with no args — getValueFormatter() — does not
+throw an obvious error, but the returned function may produce broken output or
+throw silently during update(), which prevents renderChart() from running and
+produces a completely blank chart.
+
+WRONG — crashes silently:
+  const getValueFormatter = initFormatter(state.value_format);
+  // in update():
+  const valueFormat = getValueFormatter();   // no locale fn — BROKEN
+
+CORRECT — mirrors scatter-basic/src/core/init.js + popup.js:
+  import initLocalization from "@flourish/number-localization";
+  import initFormatter from "@flourish/number-formatter";
+  const localization = initLocalization(state.localization);
+  const getValueFormatter = initFormatter(state.value_format);
+  // in update():
+  const locale_fn = localization.getFormatterFunction();
+  const valueFormat = getValueFormatter(locale_fn);
+
+Also add @flourish/number-localization to package.json dependencies, state,
+and template.yml (under "Number formatting") — see module entry above.
+
+--------------------------------------------------------------------------------
+
+[15] Outside labels on circular charts: derive radius from space, not breakpoints
+------------------------------------------------------------------------
+For pie, donut, rose, or radial bar charts with labels on the outside connected
+by leader lines, a common mistake is to pick a fixed label gutter and then
+adjust the radius at a mobile breakpoint. This creates a visible jump when the
+breakpoint fires.
+
+Instead, derive the radius from the available space in every update():
+
+  const max_label_px  = 80;   // estimated max label width in px
+  const leader_length = 16;   // px
+  const padding       = 8;    // px breathing room
+  const outerRadius   = Math.min(W, H) / 2 - max_label_px - leader_length - padding;
+
+Because W and H are recalculated on every resize, the radius shrinks smoothly
+as the container narrows — no breakpoint, no jump.
+
+If label text varies in length, measure the longest label with a hidden SVG
+<text> node (or canvas measureText) before computing the radius. A fixed
+estimate of 80–100px is usually close enough for a first build.
+
+Also hide or truncate labels below ~350px container width — at that size leader
+lines overlap and the chart becomes unreadable regardless of radius.
+
+--------------------------------------------------------------------------------
+
+[16] Do not guess module enum values — check the module's settings.yml
+------------------------------------------------------------------------
+Module state properties that accept a fixed set of string values will silently
+ignore (or crash on) values that don't exactly match the module's internal list.
+CSS property names are NOT valid — the module defines its own vocabulary.
+
+Example: @flourish/chart-layout gridline_style
+  Valid values:   solid  dash  dot  dot_dash
+  NOT valid:      dotted  dashed  (these are CSS words, not chart-layout enums)
+
+If you set gridline_style: "dotted", chart-layout may throw before rendering
+any custom marks — the chart appears blank with axes missing.
+
+When setting module state defaults directly (e.g. in state.js):
+  x: { gridlines: true, gridline_style: "dot" }   // correct
+  x: { gridlines: true, gridline_style: "dotted" } // wrong — silent failure
+
+To find the valid values for any module property: read the module's
+settings.yml in node_modules/@flourish/<module-name>/settings.yml and look
+for the choices: block on that property.
+
+--------------------------------------------------------------------------------
+
+[17] Line curve interpolators — curveBasis undershoots peaks and troughs
+------------------------------------------------------------------------
+When drawing smooth line charts, curveBasis is a common choice but it
+undershoots extreme values — the smoothed curve does not pass through the actual
+data points, making peaks appear lower and troughs higher than they are.
+
+For most data line charts, prefer:
+  curveMonotoneX    — smooth and monotone in x; preserves local maxima/minima.
+                      Best default for time series where peaks and valleys matter.
+  curveCatmullRom   — passes through every data point with smooth curves.
+                      Good for sparse data where an organic shape is wanted.
+
+Reserve curveBasis for intentionally smoothed/estimated data (trend lines,
+density curves) where the reader expects the line to not match exact values.
+
+  import { curveBasis, curveCatmullRom, curveMonotoneX } from "d3-shape";
+  line.curve(curveMonotoneX)   // recommended default for data line charts

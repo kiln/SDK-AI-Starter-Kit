@@ -1,0 +1,16 @@
+html, body { height: 100%; margin: 0; }
+
+svg { display: block; }
+
+// Axis text inherits the Flourish font-colour setting via currentColor.
+.axis text {
+  font-size: 0.75rem;
+  fill: currentColor;
+}
+
+// Subtle axis lines — enough to orient the reader without dominating the chart.
+.axis line,
+.axis path {
+  stroke: currentColor;
+  opacity: 0.25;
+}

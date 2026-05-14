@@ -1,0 +1,104 @@
+id: CHANGE_ME
+name: D3 bar chart
+description: A responsive D3 bar chart — demonstrates converting a d3og.com example into a Flourish template
+author: Unknown author
+
+sdk_version: 3
+
+build:
+  src:
+    script: npm run build
+    directory: src
+    files:
+      - rollup.config.js
+
+  less:
+    script: npm run less
+    directory: less
+
+settings:
+  # First section is named after the chart. Height settings live at the bottom
+  # of this section — no separate "Size" section, no new_section label.
+  - D3 bar chart
+  - property: height_mode
+    name: Height mode
+    type: string
+    style: buttons
+    choices:
+      - [Auto, auto]
+      - [Aspect ratio, aspect]
+      # - [Fill container, off]  # uncomment if users need to opt into container-filling in responsive embeds
+    description: <b>Auto</b> sets a sensible default height. <b>Aspect ratio</b> lets you control the chart shape. Both modes only affect responsive embeds — in a fixed-height context the chart fills the available space.
+  - property: aspect_ratio
+    name: Aspect (desktop)
+    description: Width divided by height. 1 is square; 1.6 is wide.
+    type: number
+    min: 0.1
+    max: 10
+    step: 0.1
+    width: half
+    show_if:
+      height_mode: aspect
+  - property: aspect_ratio_mobile
+    name: Aspect (mobile)
+    type: number
+    min: 0.1
+    max: 10
+    step: 0.1
+    width: half
+    show_if:
+      height_mode: aspect
+  - property: aspect_breakpoint
+    name: Mobile breakpoint
+    description: Window width (px) below which the mobile aspect ratio is used.
+    type: number
+    min: 200
+    step: 50
+    width: half
+    show_if:
+      height_mode: aspect
+
+  - Colors
+  - property: color_mode
+    name: Color mode
+    type: string
+    style: buttons
+    choices:
+      - [Single color, single]
+      - [Color by bar, by_bar]
+
+  - import: "@flourish/colors"
+    property: color
+    overrides:
+      - tag: numeric
+        show_if: false
+      - property: categorical_extend
+        show_if:
+          color_mode: by_bar
+      - property: categorical_custom_palette
+        show_if:
+          color_mode: by_bar
+
+  - Layout
+  # To set the full canvas background colour (including margins and axis label
+  # area), use the Layout module's Background colour and Text colour settings.
+  # Do not set background on the SVG or primary div directly — it only affects
+  # the inner element, not the whole canvas.
+  - import: "@flourish/layout"
+    property: layout
+
+data:
+  - dataset: values
+    key: label
+    name: Label
+    description: Category name shown on the x axis
+    type: column
+    column: "Data::A"
+    data_type: [string]
+  - dataset: values
+    key: value
+    name: Value
+    description: Numeric value shown on the y axis
+    type: column
+    column: "Data::B"
+    data_type: [number]

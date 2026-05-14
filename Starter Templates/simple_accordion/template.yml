@@ -1,0 +1,75 @@
+id: CHANGE_ME
+name: Simple accordion
+description: A collapsible accordion list — a single-file Flourish template for learning the SDK without chart-layout
+author: Unknown author
+
+sdk_version: 3
+
+build:
+  src:
+    script: npm run build
+    directory: src
+    files:
+      - rollup.config.js
+
+  less:
+    script: npm run less
+    directory: less
+
+settings:
+  # CONVENTION: the first section is named after the chart ("Accordion").
+  # For templates with configurable height, add height settings (height_mode,
+  # aspect_ratio, etc.) at the BOTTOM of this section — no separate section
+  # and no new_section label. This template uses content-driven height
+  # (SDK_BASICS section 6, height category C): the canvas is sized in update()
+  # to fit all headers + the tallest content panel, so no height_mode setting
+  # is needed.
+  - Accordion
+
+  - property: header_bg
+    name: Header background
+    type: color
+
+  - property: header_text
+    name: Header text
+    type: color
+
+  - property: content_bg
+    name: Content background
+    type: color
+
+  - property: content_text
+    name: Content text
+    type: color
+
+  - property: icon_color
+    name: Icon colour
+    type: color
+
+  - property: open_first
+    name: Open first item by default
+    type: boolean
+
+  - Layout
+  # To set the full canvas background colour (including the area outside the
+  # accordion), use the Layout module's Background colour and Text colour
+  # settings. Do not set background on the primary div directly — it only
+  # affects that element, not the whole canvas.
+  - import: "@flourish/layout"
+    property: layout
+
+data:
+  - dataset: data
+    key: title
+    name: Title
+    description: The header text for each accordion item
+    type: column
+    column: "Data::A"
+    data_type: [string]
+  - dataset: data
+    key: content
+    name: Content
+    description: The body text shown when the item is expanded
+    type: column
+    column: "Data::B"
+    data_type: [string]
