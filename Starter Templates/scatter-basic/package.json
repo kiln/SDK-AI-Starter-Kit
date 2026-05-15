@@ -28,7 +28,7 @@
   "devDependencies": {
     "@rollup/plugin-commonjs": "^22.0.2",
     "@rollup/plugin-node-resolve": "^14.1.0",
-    "@rollup/plugin-terser": "^0.4.4",
+    "@rollup/plugin-terser": "^1.0.0",
     "less": "^3.0.1",
     "less-plugin-clean-css": "^1.5.1",
     "rollup": "^2.79.0"
