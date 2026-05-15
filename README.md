@@ -1,6 +1,6 @@
 # Flourish SDK AI Starter
 
-A starter kit for building basic [Flourish](https://flourish.studio) templates with AI coding agents. So far this has been succesfully tested with Codex and Claude code.
+A starter kit for building basic [Flourish](https://flourish.studio) templates with AI coding agents. So far this has been succesfully tested with Codex and Claude code. I recommend using with Codex.
 
 ## What's included
 
@@ -34,7 +34,7 @@ You don't need all of these. A sentence plus an image is usually enough.
 
 ## What to expect
 
-- **Time:** 7–35 minutes per template depending on the model and chart complexity
+- **Time:** 7–30 minutes per template depending on the model and chart complexity
 - **Permission requests:** expect 10–20 prompts to allow terminal access, curl, file reads, etc.
 - **Success rate:** Codex has a success rate of roughly 3/5 first time when given an image, Claude code 2/5, CoPilot 0% first time. Codex currently works the best I think
 because it regularly takes screenshots to track progress. Claude code does this a bit
