@@ -18,7 +18,7 @@
     "@flourish/layout": "^4",
     "@rollup/plugin-commonjs": "^25.0.7",
     "@rollup/plugin-node-resolve": "^15.2.3",
-    "@rollup/plugin-terser": "^0.4.4",
+    "@rollup/plugin-terser": "^1.0.0",
     "d3-array": "^3",
     "d3-axis": "^3",
     "d3-scale": "^4",
