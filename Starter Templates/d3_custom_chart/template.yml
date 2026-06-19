@@ -1,0 +1,111 @@
+id: CHANGE_ME
+name: D3 custom chart
+description: A custom-D3 starter — base for charts without standard x/y axes (radial, polar, treemap, etc.); demonstrated with a simple bar chart
+author: ''
+
+sdk_version: 3
+
+build:
+  src:
+    script: npm run build
+    directory: src
+    files:
+      - rollup.config.js
+
+  less:
+    script: npm run less
+    directory: less
+
+settings:
+  # First section is named after the chart type (here the demo is a bar chart).
+  # Height settings live at the bottom of this section — no separate "Size"
+  # section, no new_section label.
+  - Bar chart
+  - property: height_mode
+    name: Height mode
+    description: >-
+      <b>Auto:</b> picks a sensible height from the chart and width.
+      <br><b>Aspect ratio:</b> you set the width-to-height ratio (below).
+      <br><br>Ignored in a fixed-height embed (e.g. a simple iframe), where the
+      chart fills the container.
+    type: string
+    style: buttons
+    choices:
+      - [Auto, auto]
+      - [Aspect ratio, aspect]
+      # - [Fill container, off]  # uncomment if users need to opt into container-filling in responsive embeds
+  - property: aspect_ratio
+    name: Aspect (desktop)
+    description: Width divided by height. 1 is square, above 1 is wider, below 1 is taller.
+    type: number
+    min: 0.1
+    max: 10
+    step: 0.1
+    width: half
+    show_if:
+      height_mode: aspect
+  - property: aspect_ratio_mobile
+    name: Aspect (mobile)
+    description: Aspect ratio used on small screens (below the breakpoint). 1 is square, above 1 is wider, below 1 is taller.
+    type: number
+    min: 0.1
+    max: 10
+    step: 0.1
+    width: half
+    show_if:
+      height_mode: aspect
+  - property: aspect_breakpoint
+    name: Mobile breakpoint
+    description: Window width (px) below which the mobile aspect ratio is used.
+    type: number
+    min: 200
+    step: 50
+    width: half
+    show_if:
+      height_mode: aspect
+
+  - Colors
+  - property: color_mode
+    name: Color mode
+    type: string
+    style: buttons
+    choices:
+      - [Single color, single]
+      - [Color by bar, by_bar]
+
+  - import: "@flourish/colors"
+    property: color
+    overrides:
+      - tag: numeric
+        show_if: false
+      - property: categorical_extend
+        show_if:
+          color_mode: by_bar
+      - property: categorical_custom_palette
+        show_if:
+          color_mode: by_bar
+
+  # The @flourish/layout import supplies its own "Layout" section heading — do
+  # NOT add an explicit "- Layout" heading here or it duplicates (see SDK_BASICS
+  # section 4). To set the full canvas background colour (including margins and
+  # axis label area), use the Layout module's Background colour and Text colour
+  # settings. Do not set background on the SVG or primary div directly — it only
+  # affects the inner element, not the whole canvas.
+  - import: "@flourish/layout"
+    property: layout
+
+data:
+  - dataset: data
+    key: label
+    name: Label
+    description: Category name shown on the x axis
+    type: column
+    column: "Data::A"
+    data_type: [string]
+  - dataset: data
+    key: value
+    name: Value
+    description: Numeric value shown on the y axis
+    type: column
+    column: "Data::B"
+    data_type: [number]

@@ -1,0 +1,32 @@
+label,x,y,color,facet
+Norway,82,83,High income,Europe
+Switzerland,85,84,High income,Europe
+Germany,48,81,High income,Europe
+UK,46,81,High income,Europe
+France,43,82,High income,Europe
+Spain,30,83,Upper middle,Europe
+Italy,34,83,Upper middle,Europe
+Russia,12,73,Upper middle,Europe
+USA,65,79,High income,Americas
+Canada,52,82,High income,Americas
+Brazil,9,75,Upper middle,Americas
+Mexico,10,75,Upper middle,Americas
+Argentina,10,76,Upper middle,Americas
+Colombia,7,72,Upper middle,Americas
+Japan,42,84,High income,Asia
+South Korea,35,83,High income,Asia
+China,12,77,Upper middle,Asia
+Indonesia,4,72,Lower middle,Asia
+India,2,70,Lower middle,Asia
+Thailand,7,77,Upper middle,Asia
+Vietnam,4,75,Lower middle,Asia
+Australia,57,83,High income,Oceania
+New Zealand,40,82,High income,Oceania
+Nigeria,2,55,Low income,Africa
+South Africa,6,64,Upper middle,Africa
+Kenya,2,67,Lower middle,Africa
+Egypt,4,72,Lower middle,Africa
+Ghana,2,63,Lower middle,Africa
+Ethiopia,1,52,Low income,Africa
+Tanzania,1,54,Low income,Africa
+Morocco,3,68,Lower middle,Africa

@@ -1,0 +1,27 @@
+{
+  "name": "simple-accordion",
+  "version": "1.0.0",
+  "description": "A Flourish accordion template — no chart-layout, single-file approach",
+  "main": "template.js",
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "keywords": [
+    "flourish"
+  ],
+  "scripts": {
+    "build": "rollup -c",
+    "less": "lessc --plugin=less-plugin-clean-css --source-map less/style.less static/style.css"
+  },
+  "dependencies": {
+    "@flourish/layout": "^8.8.2"
+  },
+  "devDependencies": {
+    "@rollup/plugin-commonjs": "^25.0.7",
+    "@rollup/plugin-node-resolve": "^15.2.3",
+    "@rollup/plugin-terser": "^0.4.4",
+    "less": "^3.0.1",
+    "less-plugin-clean-css": "^1.5.1",
+    "rollup": "^4.9.4"
+  }
+}

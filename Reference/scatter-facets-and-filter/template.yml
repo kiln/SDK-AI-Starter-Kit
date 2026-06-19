@@ -1,0 +1,216 @@
+id: CHANGE_ME
+name: Scatter — Facets and Filter
+description: >
+  Reference template demonstrating @flourish/facets (small-multiples grid) and
+  @flourish/controls (facet filter dropdown) alongside the full scatter module stack.
+  Do not copy this as a boilerplate — use Starter Templates/ instead.
+  Read this template when you need the facets or controls wiring patterns.
+author: ''
+
+sdk_version: 3
+
+build:
+  src:
+    script: npm run build
+    directory: src
+    files:
+      - rollup.config.js
+
+  less:
+    script: npm run less
+    directory: less
+
+settings:
+  - Scatter
+  - property: dot_radius
+    name: Dot radius
+    description: Radius of each dot in pixels
+    type: number
+    min: 1
+    max: 50
+  - property: dot_color
+    name: Color
+    type: color
+    hide_if:
+      data.data.color: true
+  - property: animation_duration
+    name: Animation duration
+    description: Duration of transitions in milliseconds. Set to 0 to disable animations.
+    type: number
+    min: 0
+    max: 2000
+    step: 50
+
+  - property: height_mode
+    name: Height mode
+    description: >-
+      <b>Auto:</b> picks a sensible height from the chart and width.
+      <br><b>Aspect ratio:</b> you set the width-to-height ratio (below).
+      <br><br>Ignored in a fixed-height embed (e.g. a simple iframe), where the
+      chart fills the container.
+    type: string
+    style: buttons
+    choices:
+      - [Auto, auto]
+      - [Aspect ratio, aspect]
+  - property: aspect_ratio
+    name: Aspect (desktop)
+    description: Width divided by height. 1 is square, above 1 is wider, below 1 is taller.
+    type: number
+    min: 0.1
+    max: 10
+    step: 0.1
+    width: half
+    show_if:
+      height_mode: aspect
+  - property: aspect_ratio_mobile
+    name: Aspect (mobile)
+    description: Aspect ratio used on small screens (below the breakpoint). 1 is square, above 1 is wider, below 1 is taller.
+    type: number
+    min: 0.1
+    max: 10
+    step: 0.1
+    width: half
+    show_if:
+      height_mode: aspect
+  - property: aspect_breakpoint
+    name: Mobile breakpoint
+    description: Window width (px) below which the mobile aspect ratio is used.
+    type: number
+    min: 200
+    step: 50
+    width: half
+    show_if:
+      height_mode: aspect
+
+  - Filter
+  # The control lets users filter the grid to a single facet panel.
+  # It is only visible when a facet column is bound.
+  - property: controls_container
+    import: "@flourish/controls/container"
+  - property: facet_control
+    import: "@flourish/controls"
+    overrides:
+      - property: control_type
+        new_section: Filter control
+  - property: controls_style
+    import: "@flourish/ui-styles/controls-style"
+  - property: dropdown_style
+    import: "@flourish/ui-styles/dropdown-style"
+
+  - Colors
+  # NOTE: Type-based show_if conditions may not appear reliably in local
+  # `flourish run`. Publish a prerelease to test these correctly in Studio.
+  - property: color
+    import: "@flourish/colors"
+    show_if:
+      data.data.color: true
+    overrides:
+      - tag: discrete
+        method: extend
+        show_if:
+          data.data.color.type: string
+      - tag: numeric
+        method: extend
+        show_if:
+          data.data.color.type: number
+
+  - Grid of charts
+  - property: facets
+    import: "@flourish/facets"
+
+  - X axis
+  - property: x
+    import: "@flourish/chart-layout/x"
+
+  - Y axis
+  - property: y
+    import: "@flourish/chart-layout/y"
+
+  - Legends
+  - property: legend_categorical
+    import: "@flourish/legend/discrete-color"
+    show_if:
+      data.data.color.type: string
+  - property: legend_continuous
+    import: "@flourish/legend/continuous-color"
+    show_if:
+      data.data.color.type: number
+    overrides:
+      - property: binned_label_mode
+        hide_if:
+          color.binning: false
+
+  - Popups & panels
+  - property: popup
+    import: "@flourish/info-popup"
+
+  - Chart background
+  - property: chart_bg
+    import: "@flourish/chart-layout/background"
+
+  - Number formatting
+  - property: x_format
+    import: "@flourish/formatters/number-formatter"
+    overrides:
+      - property: prefix
+        new_section: X axis
+  - property: y_format
+    import: "@flourish/formatters/number-formatter"
+    overrides:
+      - property: prefix
+        new_section: Y axis
+
+  # @flourish/layout supplies its own "Layout" section heading — do NOT add an
+  # explicit "- Layout" here or it duplicates (see SDK_BASICS section 4).
+  - property: layout
+    import: "@flourish/layout"
+
+data:
+  - dataset: data
+    key: label
+    name: Label
+    description: Name shown in popup and legend
+    type: column
+    column: "Data::A"
+    optional: true
+    data_type: [string]
+  - dataset: data
+    key: x
+    name: X values
+    description: Horizontal position
+    type: column
+    column: "Data::B"
+    data_type: [number]
+  - dataset: data
+    key: y
+    name: Y values
+    description: Vertical position
+    type: column
+    column: "Data::C"
+    data_type: [number]
+  - dataset: data
+    key: color
+    name: Color by
+    type: column
+    column: "Data::D"
+    optional: true
+    description: Colors the dots by category or value
+    data_type: [string, number]
+    assignment:
+      can_rebind: true
+      hints: { string: { color: true } }
+  - dataset: data
+    key: facet
+    name: Grid of charts
+    description: Each unique value creates a separate panel in the grid. Leave unbound for a single chart.
+    type: column
+    column: "Data::E"
+    optional: true
+    data_type: [string]
+  - dataset: data
+    key: metadata
+    name: Info for popups
+    description: 'Any extra columns to show in the popup. Each appears as "Column header: value".'
+    type: columns
+    columns: "Data::"
