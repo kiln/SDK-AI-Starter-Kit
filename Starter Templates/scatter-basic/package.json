@@ -1,0 +1,36 @@
+{
+  "name": "scatter-basic",
+  "version": "1.0.0",
+  "description": "A basic scatter chart template for Flourish",
+  "main": "template.js",
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "keywords": [
+    "flourish"
+  ],
+  "scripts": {
+    "build": "rollup -c",
+    "build:prod": "NODE_ENV=production rollup -c",
+    "watch": "rollup -c --watch",
+    "less": "lessc --plugin=less-plugin-clean-css --source-map less/style.less static/style.css"
+  },
+  "dependencies": {
+    "@flourish/chart-layout": "^11.0.3",
+    "@flourish/colors": "^8.0.0",
+    "@flourish/formatters": "^2.4.1",
+    "@flourish/info-popup": "^8.3.2",
+    "@flourish/layout": "^8.8.2",
+    "@flourish/legend": "^8.1.2",
+    "d3-selection": "^3.0.0",
+    "d3-transition": "^3.0.1"
+  },
+  "devDependencies": {
+    "@rollup/plugin-commonjs": "^25.0.7",
+    "@rollup/plugin-node-resolve": "^15.2.3",
+    "@rollup/plugin-terser": "^0.4.4",
+    "less": "^3.0.1",
+    "less-plugin-clean-css": "^1.5.1",
+    "rollup": "^4.9.4"
+  }
+}

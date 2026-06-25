@@ -1,0 +1,34 @@
+/* scatter-basic starter styles.
+   Keep this file minimal — chart colours and marks are controlled by
+   Flourish theme settings and the @flourish/colors module, not here.       */
+
+html, body {
+  min-height: 100%;
+  width: 100%;
+  margin: 0;
+  /* Prevent horizontal scrollbar on mobile — always include this. */
+  overflow-x: hidden;
+}
+
+/* Prevent Flourish layout containers from creating horizontal overflow on
+   mobile. Legends, footers, and SVG labels can all force the container wider
+   than the viewport — keep these min-width: 0 and verify at ~390px width. */
+#fl-layout-wrapper,
+.fl-layout-container,
+.fl-layout-inner {
+  min-width: 0;
+}
+
+.fl-legend-container {
+  max-width: 100%;
+  min-width: 0;
+}
+
+.fl-legend-item {
+  min-width: 0;
+}
+
+/* Allow long legend labels to wrap rather than force overflow. */
+.fl-legend-label {
+  overflow-wrap: anywhere;
+}

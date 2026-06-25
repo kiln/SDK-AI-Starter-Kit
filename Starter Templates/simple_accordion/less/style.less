@@ -1,0 +1,98 @@
+// border-box so the header's width:100% + horizontal padding stays within the
+// container — without it the padding is added on top of 100%, overflowing by
+// 2rem and producing an unwanted horizontal scrollbar.
+*, *::before, *::after { box-sizing: border-box; }
+
+html, body { height: 100%; margin: 0; }
+
+// ---------------------------------------------------------------------------
+// Accordion container
+// ---------------------------------------------------------------------------
+
+.accordion {
+  width: 100%;
+  font-family: inherit;
+}
+
+// ---------------------------------------------------------------------------
+// Individual accordion item
+// ---------------------------------------------------------------------------
+
+.accordion-item {
+  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+
+  &:first-child {
+    border-top: 1px solid rgba(0, 0, 0, 0.1);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Header (the clickable button row)
+// ---------------------------------------------------------------------------
+
+.accordion-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 0.875rem 1rem;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  font-size: 1rem;
+  font-weight: 600;
+  font-family: inherit;
+  line-height: 1.4;
+
+  // Remove default button appearance.
+  background: none;
+  -webkit-appearance: none;
+  appearance: none;
+
+  &:focus-visible {
+    outline: 2px solid currentColor;
+    outline-offset: -2px;
+  }
+}
+
+.accordion-title {
+  flex: 1;
+}
+
+// ---------------------------------------------------------------------------
+// Chevron icon — rotates 180° when the item is open
+// ---------------------------------------------------------------------------
+
+.accordion-icon {
+  display: flex;
+  align-items: center;
+  margin-left: 0.75rem;
+  flex-shrink: 0;
+  transition: transform 0.25s ease;
+
+  svg {
+    display: block;
+  }
+}
+
+.accordion-item.open .accordion-icon {
+  transform: rotate(180deg);
+}
+
+// ---------------------------------------------------------------------------
+// Content panel — expands/collapses via max-height transition
+// JS sets maxHeight to panel.scrollHeight on open / 0 on close — no fixed cap needed.
+// ---------------------------------------------------------------------------
+
+.accordion-content {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.3s ease;
+}
+
+.accordion-content-inner {
+  padding: 0.875rem 1rem;
+  font-size: 0.9375rem;
+  line-height: 1.6;
+  overflow-wrap: break-word; // wrap long words/URLs instead of overflowing
+}

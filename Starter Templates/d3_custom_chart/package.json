@@ -1,0 +1,32 @@
+{
+  "name": "d3-custom-chart",
+  "version": "1.0.0",
+  "description": "A custom-D3 Flourish starter — base for charts without standard x/y axes (radial, polar, treemap, network, etc.); ships a simple bar chart as a worked example",
+  "main": "template.js",
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "keywords": [
+    "flourish"
+  ],
+  "scripts": {
+    "build": "rollup -c",
+    "less": "lessc --plugin=less-plugin-clean-css --source-map less/style.less static/style.css"
+  },
+  "dependencies": {
+    "@flourish/colors": "^8.0.0",
+    "@flourish/layout": "^8.8.2",
+    "d3-array": "^3",
+    "d3-axis": "^3",
+    "d3-scale": "^4",
+    "d3-selection": "^3"
+  },
+  "devDependencies": {
+    "@rollup/plugin-commonjs": "^25.0.7",
+    "@rollup/plugin-node-resolve": "^15.2.3",
+    "@rollup/plugin-terser": "^0.4.4",
+    "less": "^3.0.1",
+    "less-plugin-clean-css": "^1.5.1",
+    "rollup": "^4.9.4"
+  }
+}

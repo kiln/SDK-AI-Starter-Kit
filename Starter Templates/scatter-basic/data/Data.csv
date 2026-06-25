@@ -1,0 +1,30 @@
+label,x,y,color
+Norway,82,83,Europe
+Switzerland,85,84,Europe
+USA,65,79,Americas
+Germany,48,81,Europe
+Japan,42,84,Asia
+UK,46,81,Europe
+France,43,82,Europe
+Canada,52,82,Americas
+Australia,57,83,Oceania
+South Korea,35,83,Asia
+Spain,30,83,Europe
+Italy,34,83,Europe
+Brazil,9,75,Americas
+China,12,77,Asia
+Mexico,10,75,Americas
+Russia,12,73,Europe
+India,2,70,Asia
+Nigeria,2,55,Africa
+South Africa,6,64,Africa
+Kenya,2,67,Africa
+Egypt,4,72,Africa
+Argentina,10,76,Americas
+Indonesia,4,72,Asia
+Thailand,7,77,Asia
+Vietnam,4,75,Asia
+Test1,0,75,Asia
+Test2,46,0,Asia
+Test3,1,45,Asia
+Test4,76,1,Asia

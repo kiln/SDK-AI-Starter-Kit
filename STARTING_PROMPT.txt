@@ -1,0 +1,406 @@
+STARTING_PROMPT.txt
+Paste this at the start of a conversation with any AI assistant to give it
+the context it needs to help you build Flourish SDK templates.
+
+================================================================================
+WHAT THIS REPO IS
+================================================================================
+
+This repo contains everything needed to build custom Flourish templates —
+reusable interactive charts and visualisations that run inside Flourish.
+A Flourish template is a JavaScript bundle + a YAML config file. Once published,
+non-technical users can create and update visualisations from it without touching
+code.
+
+The repo has four folders:
+
+  Starter Templates/        Three working templates to copy and build from.
+                            Read-only — never edit these directly.
+  Reference/                A reference template (scatter-facets-and-filter) demonstrating
+                            @flourish/facets and @flourish/controls. Read it when
+                            building anything with small-multiples or filter controls.
+  New Flourish Templates/   Working folder for anything you build. ALWAYS create
+                            new templates inside this folder (it is gitignored,
+                            so the starter scaffolding stays clean). Because it is
+                            gitignored, git status will NOT show what you build
+                            here — that is expected, not a failed build. To keep or
+                            version a template, move it out of this folder (or
+                            git add -f it).
+  SDK_BASICS_FOR_AI.txt     Technical reference. Read this when you need API
+                            details, gotchas, or module documentation.
+
+
+================================================================================
+YOUR JOB
+================================================================================
+
+You are helping the user build a Flourish SDK template. This may mean:
+- Building a new template from scratch based on an idea or sketch
+- Converting existing code (e.g. a D3 chart) into a Flourish template
+- Extending or modifying one of the starter templates
+- Debugging a template that isn't working as expected
+
+Before writing any code, read the source files of the most relevant starter
+template. They are the source of truth for how Flourish templates should be
+structured. Do not rely on general knowledge about Flourish.
+
+
+================================================================================
+STEP 1 — CHECK THE USER IS SET UP
+================================================================================
+
+Before doing any template work, check that the user has the prerequisites:
+
+  1. Node.js installed (v18 or higher recommended)
+       Check: node --version
+       Install: https://nodejs.org
+
+  2. Flourish SDK installed globally
+       Check: flourish --version
+       Install: npm install -g @flourish/sdk
+
+  3. Logged in to Flourish
+       Check: flourish whoami
+       Login: flourish login  (uses their flourish.studio account)
+
+If the user hasn't done these steps, walk them through installation before
+anything else. They may not be a developer — explain each step clearly.
+
+  4. Reduce permission prompts
+     AI agents (Claude Code, Codex, etc.) ask the user to approve commands
+     before running them, and building a template runs the same few commands
+     many times. Cut this down two ways: batch related commands into a single
+     call so the user approves once instead of repeatedly; and if prompts are
+     still frequent, ask the user whether they want you to set up an allowlist
+     file for their tool to pre-approve the commands you run.
+
+
+================================================================================
+STEP 2 — PICK THE RIGHT STARTER
+================================================================================
+
+Apply this test first, then read the chosen starter's source files before
+writing any code.
+
+  DECISION TEST — answer in order, stop at the first match:
+
+  1. Does the chart have x or y axes?                    → scatter-basic
+     Exception: radial or polar axes (e.g. radar, rose) → d3_custom_chart
+  2. Is it a non-chart template — no D3, no axes?        → simple_accordion
+     (cards, tables, lists, text layouts, accordion)
+  3. Is it a chart with no x/y axes?                     → d3_custom_chart
+     (radial, polar, treemap, network, chord, etc.)
+
+  scatter-basic   (Starter Templates/scatter-basic/ — multi-file structure)
+    Use when: the chart has x or y axes — scatter, line, bar/column, area,
+    bubble, box plot, candlestick, violin, heatmap, waterfall, or any chart
+    plotted on a rectangular grid. This is the default for most charts.
+    Includes the full module stack (@flourish/colors, @flourish/legend,
+    @flourish/info-popup, @flourish/formatters) wired to brand themes.
+
+  simple_accordion   (Starter Templates/simple_accordion/)
+    Use when: no chart library, no axes — DOM-based layouts, cards, tables,
+    text-driven templates, accordion. The simplest Flourish template structure.
+    Key patterns: @flourish/layout, data bindings, content-driven height.
+    If the interaction must grow/shrink the iframe (multiple panels open at once,
+    or closing panels should reduce the iframe height), read SDK_BASICS height
+    category D before building. The starter accordion is intentionally simpler:
+    its click handler does not resize the iframe.
+
+  d3_custom_chart   (Starter Templates/d3_custom_chart/)
+    Use when: the chart has no x/y axes — radial, polar, treemap, network,
+    chord, or any layout where you define the full coordinate system yourself.
+    Do NOT use just because a chart uses D3. If it has labelled x/y axes,
+    use scatter-basic instead.
+    Key patterns: D3 sub-package imports, layout.getPrimaryWidth/Height(),
+    responsive height with getChartHeight().
+    IMPORTANT: d3_custom_chart only shows layout and color. Charts built from it
+    will often also need popups, number formatting, and legends — read
+    scatter-basic's src/ files or the SDK_BASICS module wiring cheatsheet
+    (section 5) for those patterns.
+    HEIGHT NOTE: expose a height_mode setting with two choices: Auto and
+    Aspect ratio. In a fixed-height embed the chart always fills the container
+    automatically — no third option needed.
+    Pick the auto-height ratio from the chart's natural shape:
+      - Landscape (scatter, bar, line): auto height = width × 0.65 (the default).
+      - Portrait (funnel, pyramid, tall ranked bars): use a taller ratio, e.g.
+        width × 0.8–1.2 — whatever suits the shape.
+      - Circular/radial (pie, rose, radar): width × shape_ratio (circle = 1,
+        hexagon = √3/2, etc.) — NOT a fixed rem value, which creates dead space.
+    See SDK_BASICS section 6 for the canonical getChartHeight() pattern.
+
+  Reference scatter-facets-and-filter   (Reference/scatter-facets-and-filter/)
+    Read (don't copy) when: the template needs a grid of charts (@flourish/facets),
+    filter controls (@flourish/controls + @flourish/ui-styles), or per-facet
+    chart-layout instances. Key patterns: chart_layout stored on facet.node
+    (NOT in a name-keyed dict — stale dict references cause blank panels after
+    filtering), lazy-init chart-layout in the facets update callback, controls
+    change handler in create-dom.js, updateControls() hiding the control when
+    no facet is bound.
+
+
+================================================================================
+STEP 3 — BUILD IN STAGES (do not skip)
+================================================================================
+
+Before writing any code, complete all three stages in order.
+
+--- Stage 1: Read the starter ---
+
+Read the full source files of the starter you chose in Step 2 — template.yml,
+package.json, and all files under src/ (not just index.js — for scatter-basic,
+the real patterns live in src/core/ and src/lib/). Do not skip this even for a
+simple template. The starter files are the source of truth for structure and
+wiring patterns.
+
+--- Stage 2: Clarify the data ---
+
+If the user has described the data clearly (column names, types, a sample paste,
+or a detailed description), proceed without asking. Only stop to ask when the
+data shape is genuinely unknown — getting column names wrong wastes more time
+than one clarifying question, but asking when the answer is already in the
+prompt wastes time too.
+
+If the data shape is unclear, the most useful thing is a paste of 3–5 sample
+rows showing column names and types.
+
+If the user does not have data yet or wants you to create it, agree on the
+column names and structure first, then generate a representative sample CSV.
+Do not invent column names and proceed — data shape drives every binding
+decision.
+
+Key questions (ask only what isn't already clear from the user's description):
+  - What are the column names and data types?
+  - Is this a fixed baked-in dataset or will users upload their own data?
+  - How many rows typically — a handful or potentially thousands?
+
+Popups: assume @flourish/info-popup is wanted for any template with dots,
+bars, candlesticks, or other discrete marks — do not ask. It is already
+included in scatter-basic. For d3_custom_chart templates, add it. Only omit it
+if the user explicitly says they don't want tooltips.
+
+Before building: read the actual CSV files in the chosen starter's data/ folder
+(e.g. "Starter Templates/scatter-basic/data/") to confirm column names before
+writing bindings. Do not assume the CSV contents — the starter CSV may have
+different column names than you expect.
+
+--- Stage 3: Write a plan and get approval ---
+
+Before writing code, decide which of the starter's modules are actually needed
+for this chart and list the ones to remove. Treat the starter as a menu of
+patterns, not a mandatory stack. A module that isn't used in rendering should
+not be imported — it still clutters the settings panel.
+
+Module defaults — decide these in the plan, not as polish:
+- Any visual where colour varies by data: use @flourish/colors with state.color
+  in the first build. This includes color driven by a dedicated color column AND
+  color keyed from any other column (title, category, label). Do not hand-roll
+  a palette array in state — the module gives theme support and per-item
+  overrides for free. type: color is only for a single fixed colour (every mark
+  the same colour).
+- Any visual described as a grid of charts, small multiples, one chart per
+  group, or separate repeated panels: use @flourish/facets with state.facets
+  in the first build. Do not hand-roll the grid.
+
+Then write a short plan covering:
+  - Which starter is the base and which modules will be kept / dropped
+  - For @flourish/colors and @flourish/facets: explicitly state "yes, because..."
+    or "not needed, because..." — do not leave these implicit
+  - The data binding structure (dataset name, binding key names)
+  - Which settings will be exposed in template.yml
+  - The rendering approach in one sentence
+  - Mobile aspect ratio and whether marks or labels need to scale or hide at
+    narrow widths (important for dense charts, outside labels, legends)
+
+Get the user to confirm the plan before writing code — UNLESS the request is
+already a complete spec, the user explicitly tells you to start/build/implement,
+or you are running unattended; in those cases state the plan inline and proceed
+(stopping to ask would just stall). When the data shape or intent is genuinely
+unclear, wait for confirmation. The goal of the first
+build is a minimum working version — a template that renders correctly with the
+sample data. Settings refinement, visual polish, and edge cases come in later
+rounds.
+
+Once the minimum working version is running locally, screenshot it yourself
+before reporting to the user. Two local URLs exist and they test different things:
+  - http://localhost:1685/         The editor: settings panel on the right, plus
+    the chart in an iframe whose WIDTH is set by the toolbar control, not the
+    browser window. Resizing the browser does NOT change the iframe width here,
+    so it is the wrong surface for width/mobile testing. It IS where responsive
+    height (the auto/aspect height_mode path) runs.
+  - http://localhost:1685/preview  The bare visualisation, full-window. Its width
+    follows the viewport, so this is the surface to screenshot and to test narrow
+    widths. Note: /preview is a fixed-height context (Flourish.fixed_height is
+    true), so it does NOT exercise the auto/aspect height_mode code path.
+
+To capture a screenshot, use whatever browser/screenshot capability you already
+have. If you have none, headless Chrome works and needs no download if Chrome is
+installed (do NOT download a browser):
+  "<path to Chrome>" --headless --screenshot=out.png --window-size=1000,700 \
+      --timeout=15000 http://localhost:1685/preview
+(On macOS the path is "/Applications/Google Chrome.app/Contents/MacOS/Google
+Chrome". --timeout is needed because the editor page's live-reload keeps it
+"loading" so headless can otherwise wait forever.)
+
+Wait for the rebuild to finish before capturing. After you edit source, the dev
+server rebuilds and the browser reloads — the server log prints a reload/build
+message. Screenshotting too early catches a mid-reload or mid-transition frame
+(half-sized marks, animations still running) that looks like a bug but isn't.
+Let it settle (or briefly re-capture) before trusting the image.
+
+Check on /preview:
+  - Marks are visible and positioned correctly (not blank, not off-screen)
+  - Axes, labels, and legend render without overlap or clipping
+  - Mobile: capture /preview at a 375px viewport (e.g. --window-size=375,700) and
+    check marks, labels, and legend still render. Do NOT just narrow the browser
+    on the editor page — the iframe width there is fixed by the toolbar, so a
+    narrow browser proves nothing (the chart just overflows the frame).
+
+Fix any problems you can see before handing over. Then tell the user:
+
+  "Open http://localhost:1685 in your browser and check the chart looks right
+   with the sample data. If anything looks off, send me a screenshot.
+
+   When you're ready to test with your own data, run:
+     flourish publish --prerelease
+   This publishes a prerelease (test) version to the server without affecting
+   any live release of the template. Open the URL it prints, go to the Data tab,
+   and upload your real dataset. The local server only shows the sample CSV —
+   the Data tab is only available in Studio."
+
+If the template uses data.data.color.type conditions (i.e. the color binding
+can be string OR number), also add:
+
+  "Note: the color panel and legend will always show in local preview regardless
+   of what data is bound. The correct categorical/sequential switching only works
+   after publishing a prerelease — it is a known local SDK limitation."
+
+Do NOT add this note for categorical-only templates (where numeric is hidden
+unconditionally with show_if: false) — those work correctly in local preview.
+
+
+================================================================================
+STEP 4 — RULES TO FOLLOW WHILE BUILDING
+================================================================================
+
+Structure:
+- Duplicate the starter directory into "New Flourish Templates/" before touching
+  any code. Never edit the starter directories — they are read-only references.
+  All new work goes inside "New Flourish Templates/" so the repo stays clean
+  (that folder is gitignored).
+  Example:
+    cp -r "Starter Templates/scatter-basic" "New Flourish Templates/my-box-plot"
+  After copying, reinstall dependencies in the new directory — the cp -r
+  step duplicates node_modules including symlinks that break on macOS:
+    cd "New Flourish Templates/my-box-plot" && rm -rf node_modules && npm install && cd ../..
+- Open template.yml in the new folder and change the id field from CHANGE_ME
+  to a unique kebab-case name (e.g. my-box-plot) before running flourish run.
+  The id must be unique within your own Flourish account — if you publish with
+  an id you have already used, the server treats it as an update and overwrites
+  that existing template. All starters ship with id: CHANGE_ME so a forgotten
+  rename fails immediately rather than silently overwriting one of your own
+  published templates.
+- Keep the single-file layout (like accordion/d3_custom_chart) unless the template
+  is complex enough to need the multi-file src/core/ structure (like scatter-basic).
+- Every template must export: state, draw(), update(). Also export data
+  whenever the template uses an editable data table (which is almost always);
+  it is only optional for templates that take no user data at all.
+- draw() creates the DOM once. update() repaints — safe to call many times.
+- draw() must call update() at the end. The SDK does not strictly require this,
+  but every template you build here should follow the rule: it guarantees the
+  visualisation reflects the initial state on first load, exactly as it will on
+  later setting changes. Always end draw() with update().
+
+template.yml ↔ state alignment:
+- Every property in template.yml settings must exist in state with a default value.
+- Every property in state that the user should control must be in template.yml.
+- When you add a setting, add it to both files at the same time.
+
+Data:
+- Never hard-code column names or assume CSV structure.
+- Always access data through bindings. The accessor matches the dataset name in
+  template.yml; all starters use dataset: data, so it is data.data — e.g.
+  data.data.map(d => d.label).
+- Initialise data with its expected shape: export const data = { data: [] }
+
+Modules:
+- Add @flourish modules only when clearly needed — they add bundle size and
+  settings complexity.
+- Always use the correct state property name for each module (layout, color,
+  popup, etc.) — themes depend on these being consistent.
+- Read SDK_BASICS_FOR_AI.txt section 5 for the full module list and wiring pattern.
+
+Pre-build checklist — run through this before flourish run:
+- @flourish/colors and @flourish/facets decisions were justified in the plan.
+- Every custom setting in template.yml has a matching default in state.
+- Every imported module is actually called in JS — importing without calling
+  has no visual effect and still adds settings panel clutter.
+- For every imported module with multiple modes (colors, legend, etc.): scan
+  the settings panel and explicitly hide modes this template cannot use.
+  Module imports are broad by default — narrow them deliberately with
+  show_if: false on unused tags.
+- First settings section is named after the chart type (e.g. "Scatter",
+  "Bar chart", "Box plot") — never "Size" or anything generic.
+- Height/size settings (height_mode, aspect_ratio, etc.) are at the BOTTOM
+  of the chart-name section — no separate section, no new_section label.
+- No manual section heading duplicates one a module generates itself
+  ("Layout" is reserved for @flourish/layout).
+- @flourish/colors is only present if marks are colored by a data column.
+  For a single mark color, use type: color instead.
+- Layout background used for full canvas; chart-layout/background only for
+  the plot area behind the data.
+- For bar, bullet, lollipop, or waterfall charts: pass an explicit extent to
+  xData/yData that includes 0, not the raw data array. If all values are
+  positive and 0 is excluded, x_scale(0) returns a negative pixel value and
+  every bar draws off-screen. See SDK_BASICS gotcha [12].
+- For templates with interactive controls (drag handles, sliders, click toggles):
+  test every interaction after the first render — drag, click, resize — and confirm
+  that labels, axes, and guides are not covered by overlay SVG elements (SVG
+  stacking is DOM order, not z-index — see SDK_BASICS gotcha [11]).
+
+Local development:
+- flourish run   →  preview at localhost:1685 — this also watches source files
+  and auto-rebuilds JS and CSS on save. No need to run npm run build or
+  npm run less manually while the server is running.
+- Stale-server trap: do NOT trust the exit code or an HTTP 200 to confirm your
+  server is up. Read the server output. "Running server at http://localhost:1685/"
+  means it started; "Another process is already listening on port 1685" /
+  "Failed to start server" means a leftover server from an earlier session still
+  holds the port — and curl/HTTP 200 then comes from that OLD process serving a
+  DIFFERENT template, so every check silently passes against the wrong build.
+  Kill the stale server (pkill -f "flourish run") and restart, or use a fresh
+  port (flourish run --port 1686) and point your checks at that port.
+- HTTP 200 is not verification even on the right server: if update() throws
+  before renderChart() runs, the server still returns 200 while the browser shows
+  a blank chart. Open /preview and confirm marks are actually visible.
+- Check the browser console for uncaught errors — a silent JS error can leave
+  marks unrendered while axes and legends still appear.
+- Resize /preview to ~375px width and check for horizontal overflow and clipping.
+
+Debugging — when the chart looks wrong:
+- Open the browser console (F12 → Console). A JS error thrown inside update()
+  prevents marks from rendering while axes and legends may still appear.
+- If marks are missing: add console.log(data.data) at the top of update() to
+  confirm data is populated. An empty array means bindings or the CSV path is wrong.
+- If marks are in the wrong position: log x_scale(knownValue) and y_scale(knownValue)
+  to check the coordinate math. Remember y_scale.range()[1] is the chart top in
+  SVG space, NOT 0 — see SDK_BASICS section 5 (@flourish/chart-layout).
+- If a setting has no visual effect: check the state property name matches the
+  template.yml property exactly (typos silently leave state at the default).
+- grep src/ for any hardcoded column names, console.log, or TODO before publishing.
+
+Publishing:
+- flourish publish --prerelease  to test in Flourish Studio without affecting
+  existing visualisations. Do this often — the local dev server has no data tab,
+  so complex datasets and column-type conditions can only be tested in Studio.
+- flourish publish --release  when the template is ready.
+
+
+================================================================================
+TECHNICAL REFERENCE
+================================================================================
+
+For full details on settings syntax, data binding options, module APIs,
+window.Flourish, file structure, versioning, and known gotchas — read:
+
+  SDK_BASICS_FOR_AI.txt  (in this repo root)
