@@ -582,7 +582,7 @@ The ones used in most production templates:
                             x: { max_value: null }      — fixed upper bound (null=auto)
                             chart_bg: { color: "#fff" } — plot area background color
                           For valid enum strings (gridline_style, etc.) always verify
-                          against settings.yml — CSS names like "dashed" are WRONG (see [16]).
+                          against settings.yml — CSS names like "dashed" are WRONG (see [15]).
 
                           xData/yData — explicit extents:
                           Pass an explicit [min, max] array instead of raw row data
@@ -591,7 +591,7 @@ The ones used in most production templates:
                                 const all_x = rows.flatMap(d => d.x2 != null
                                   ? [+d.x, +d.x2] : [+d.x]);
                                 cl.xData(all_x).yData(all_y).update();
-                            - Bars/lollipops: force 0 into the domain (see gotcha [13])
+                            - Bars/lollipops: force 0 into the domain (see gotcha [12])
                             - Shared scales (SPLOM, faceted charts): compute extent
                               across all groups first, then pass it to every panel
                             - Fixed/animated domains (drag-to-pan, locked zoom):
@@ -683,13 +683,6 @@ Additional modules:
                           height squashes cells rather than sizing them to the ratio.
                           After facets.update(), read facets.height() to get the
                           computed total and pass it to layout.setHeight() and svg.
-
-                          IMPORTANT — D3 version compatibility:
-                          @flourish/facets v1.x uses d3-selection v1 internally.
-                          @flourish/facets v2+ and v4+ are compatible with d3-selection
-                          v3 — no dedupe needed. If you must use an older facets version,
-                          pin d3-selection to v1 and deduplicate in rollup.config.js.
-                          See SDK_BASICS gotcha [11] for the full explanation.
 
 @flourish/controls      → interactive dropdowns, buttons, sliders.
                           See Reference/scatter-facets-and-filter/ for the full wiring pattern.
@@ -821,7 +814,7 @@ single-file equivalent.
     legend_container.update();
 
   Pattern B — number formatting (@flourish/formatters)
-    See the @flourish/formatters module entry above and gotcha [14].
+    See the @flourish/formatters module entry above and gotcha [13].
     import { initNumberFormatter } from "@flourish/formatters";
     const getValueFormatter = initNumberFormatter(state.value_format);
     // in update(): call the factory with the bound column's format id —
@@ -1179,14 +1172,13 @@ Index — jump to the number below for the full explanation:
   [8]  Prefer layout.setHeight() over Flourish.setHeight()
   [9]  D3 circular-dependency warnings in rollup are harmless — suppress them
   [10] @flourish/colors flips to numeric mode if updateColorScale gets numbers
-  [11] @flourish/facets v1.x + d3-selection conflict (legacy; v2+/v4+ unaffected)
-  [12] SVG stacking is DOM order, not z-index
-  [13] Bar charts: force 0 into the value-axis domain or bars draw off-screen
-  [14] @flourish/formatters: call the factory with a format id; guard non-number cols
-  [15] Outside labels on circular charts: derive radius from space, not breakpoints
-  [16] Don't guess module enum values — check the module's settings.yml
-  [17] Line curves: curveBasis undershoots peaks; prefer curveMonotoneX
-  [18] optional: true is only allowed on type: column, never type: columns
+  [11] SVG stacking is DOM order, not z-index
+  [12] Bar charts: force 0 into the value-axis domain or bars draw off-screen
+  [13] @flourish/formatters: call the factory with a format id; guard non-number cols
+  [14] Outside labels on circular charts: derive radius from space, not breakpoints
+  [15] Don't guess module enum values — check the module's settings.yml
+  [16] Line curves: curveBasis undershoots peaks; prefer curveMonotoneX
+  [17] optional: true is only allowed on type: column, never type: columns
 
 [1] data.data.<binding>.type conditions do not work in local flourish run
 ------------------------------------------------------------------------
@@ -1390,45 +1382,7 @@ appear in the panel even though numeric is hidden.
 
 --------------------------------------------------------------------------------
 
-[11] @flourish/facets v1.x + d3-selection version conflict (legacy — facets v2+ is unaffected)
-------------------------------------------------------------------------
-This only applies to @flourish/facets v1.x. Facets v2+ and v4+ are compatible
-with d3-selection v3 — no deduplication needed. If you are using the current
-reference template (scatter-facets-and-filter, facets ^4.2.1) this gotcha does
-not apply. Only read further if you are maintaining a template pinned to facets v1.
-
-@flourish/facets v1.x depends on d3-selection v1. If your template declares
-d3-selection v3 in package.json, the bundle ends up with two copies of
-d3-selection — each with its own prototype.
-
-d3-transition works by monkey-patching the d3-selection prototype it sees at
-import time, adding .transition() to selections. When two prototypes exist,
-.transition() is only added to one of them. Selections created by the other
-copy silently lack .transition().
-
-Symptom: facet outer groups are created, fl-facet-primary groups exist, but
-render callbacks never fire — marks are never drawn, SVG height stays wrong,
-facet titles remain in their initial state. The facets module got partway
-through its internal update() then failed on a .transition() call before
-invoking your render callback.
-
-Fix:
-  1. Pin d3-selection to v1 in package.json:
-       "d3-selection": "^1.4.2"
-  2. Force deduplication in rollup.config.js:
-       nodeResolve({ dedupe: ["d3-selection"] })
-
-Also audit your template for D3 v3 idioms that don't exist in v1:
-  - selection.join() — not in v1. Use enter/merge/exit:
-      const marks = g.selectAll("circle").data(rows, d => d.id);
-      marks.enter().append("circle").merge(marks).attr("r", 5);
-      marks.exit().remove();
-  - Event handlers — v1 passes (d, i, nodes), not (event, d):
-      .on("click", function(d) { ... })   // v1 style
-
---------------------------------------------------------------------------------
-
-[12] SVG stacking is DOM order, not z-index
+[11] SVG stacking is DOM order, not z-index
 ------------------------------------------------------------------------
 In SVG, elements are painted in DOM order — a later sibling always renders on
 top. CSS z-index has no effect inside SVG.
@@ -1474,7 +1428,7 @@ and returns the existing one on every subsequent call:
 
 --------------------------------------------------------------------------------
 
-[13] Bar charts: force 0 into the value-axis domain
+[12] Bar charts: force 0 into the value-axis domain
 ------------------------------------------------------------------------
 For bar, bullet, lollipop, or waterfall charts, the value axis must include
 0 so bars draw correctly from the baseline. If you pass raw data to xData/
@@ -1501,7 +1455,7 @@ This is the most common reason a bar chart renders completely blank.
 
 --------------------------------------------------------------------------------
 
-[14] @flourish/formatters: call the factory with a format id, and guard non-number columns
+[13] @flourish/formatters: call the factory with a format id, and guard non-number columns
 ------------------------------------------------------------------------
 @flourish/formatters' initNumberFormatter() returns a FACTORY, not a formatter.
 You must call the factory with a format id to get a usable formatter. The
@@ -1536,7 +1490,7 @@ The format id comes from the bound column (data.data.metadata.<binding>.output_f
 
 --------------------------------------------------------------------------------
 
-[15] Outside labels on circular charts: derive radius from space, not breakpoints
+[14] Outside labels on circular charts: derive radius from space, not breakpoints
 ------------------------------------------------------------------------
 For pie, donut, rose, or radial bar charts with labels on the outside connected
 by leader lines, a common mistake is to pick a fixed label gutter and then
@@ -1562,7 +1516,7 @@ lines overlap and the chart becomes unreadable regardless of radius.
 
 --------------------------------------------------------------------------------
 
-[16] Do not guess module enum values — check the module's settings.yml
+[15] Do not guess module enum values — check the module's settings.yml
 ------------------------------------------------------------------------
 Module state properties that accept a fixed set of string values will silently
 ignore (or crash on) values that don't exactly match the module's internal list.
@@ -1585,7 +1539,7 @@ for the choices: block on that property.
 
 --------------------------------------------------------------------------------
 
-[17] Line curve interpolators — curveBasis undershoots peaks and troughs
+[16] Line curve interpolators — curveBasis undershoots peaks and troughs
 ------------------------------------------------------------------------
 When drawing smooth line charts, curveBasis is a common choice but it
 undershoots extreme values — the smoothed curve does not pass through the actual
@@ -1605,7 +1559,7 @@ density curves) where the reader expects the line to not match exact values.
 
 --------------------------------------------------------------------------------
 
-[18] optional: true is only allowed on type: column bindings, never type: columns
+[17] optional: true is only allowed on type: column bindings, never type: columns
 ------------------------------------------------------------------------
 Adding optional: true to a type: columns (plural) binding fails to publish with:
   "optional property is only allowed for column bindings"

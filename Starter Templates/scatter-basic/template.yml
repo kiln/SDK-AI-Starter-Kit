@@ -211,3 +211,4 @@ data:
     description: 'Any extra columns to show in the popup. Each appears as "Column header: value".'
     type: columns
     columns: "Data::"
+    data_type: [string, number, datetime]

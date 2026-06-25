@@ -1,6 +1,6 @@
 # D3 custom chart
 
-A responsive bar chart built with D3. Use this as a starting point for any SVG/D3-based chart that does not fit a standard rectangular axis layout — or as a simple bar chart in its own right.
+This starter uses a simple bar chart only as a minimal D3 example. For normal rectangular bar, column, scatter, line, or axis-based charts, start from scatter-basic instead. Use this starter when the chart needs custom SVG logic that does not fit a standard x/y plot layout, such as radial, network, timeline, bespoke annotation, or non-Cartesian charts.
 
 ## Data
 

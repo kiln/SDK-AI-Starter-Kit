@@ -66,30 +66,13 @@ Before doing any template work, check that the user has the prerequisites:
 If the user hasn't done these steps, walk them through installation before
 anything else. They may not be a developer — explain each step clearly.
 
-  4. Reduce permission prompts (Claude Code / Codex users)
-     If you are running inside Claude Code or another AI agent that prompts
-     for tool permissions, create this file in the project root before starting
-     so you don't have to click Allow dozens of times:
-
-     .claude/settings.json
-     {
-       "permissions": {
-         "allow": [
-           "Bash(flourish *)",
-           "Bash(npm *)",
-           "Bash(npx *)",
-           "Bash(node *)",
-           "Bash(cp -r *)",
-           "Bash(ls *)",
-           "Bash(find *)",
-           "Bash(grep *)",
-           "Bash(cat *)"
-         ]
-       }
-     }
-
-     This covers: running the dev server, publishing, installing packages,
-     copying starter directories, and exploring files.
+  4. Reduce permission prompts
+     AI agents (Claude Code, Codex, etc.) ask the user to approve commands
+     before running them, and building a template runs the same few commands
+     many times. Cut this down two ways: batch related commands into a single
+     call so the user approves once instead of repeatedly; and if prompts are
+     still frequent, ask the user whether they want you to set up an allowlist
+     file for their tool to pre-approve the commands you run.
 
 
 ================================================================================
@@ -369,11 +352,11 @@ Pre-build checklist — run through this before flourish run:
 - For bar, bullet, lollipop, or waterfall charts: pass an explicit extent to
   xData/yData that includes 0, not the raw data array. If all values are
   positive and 0 is excluded, x_scale(0) returns a negative pixel value and
-  every bar draws off-screen. See SDK_BASICS gotcha [13].
+  every bar draws off-screen. See SDK_BASICS gotcha [12].
 - For templates with interactive controls (drag handles, sliders, click toggles):
   test every interaction after the first render — drag, click, resize — and confirm
   that labels, axes, and guides are not covered by overlay SVG elements (SVG
-  stacking is DOM order, not z-index — see SDK_BASICS gotcha [12]).
+  stacking is DOM order, not z-index — see SDK_BASICS gotcha [11]).
 
 Local development:
 - flourish run   →  preview at localhost:1685 — this also watches source files
