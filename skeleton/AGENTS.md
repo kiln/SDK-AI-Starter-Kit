@@ -10,6 +10,11 @@ Do not rely on general knowledge about Flourish — the rules and gotchas below 
 specific and easy to get wrong. The user may not be a developer; explain steps
 clearly and check things actually render before reporting success.
 
+If you (or the user) have a specific question this file doesn't answer — how a
+particular module, setting, API, or feature works — search the official developer
+docs rather than guessing (see §12). Prefer the docs and this file over recalled
+general knowledge.
+
 ---
 
 ## 0. Check the user is set up
@@ -493,3 +498,26 @@ Publishing:
 - `flourish publish --release` — promote to a full release.
 - Renaming a setting property or binding key is a **breaking change** — existing
   visualisations lose that stored value.
+
+---
+
+## 12. Official documentation — search it when unsure
+
+When there's a specific question about how something works — a module's API, a
+setting, the `window.Flourish` object, data bindings, embedding, or the Live API —
+**search the official Flourish developer docs instead of guessing**:
+
+- **Docs hub:** https://developers.flourish.studio/ — covers the Flourish SDK
+  (building templates), the Flourish Live API (loading/manipulating visualisations
+  dynamically), and the Embedding guide.
+
+How to use it:
+- If you have web access, fetch/search the relevant page and cite what you found.
+- Confirm behaviour against the actual installed code too:
+  `node_modules/@flourish/<module>/` — its `settings.yml` lists every setting and
+  the valid `choices:` for enum properties (see gotcha 9), and its `README`/source
+  documents the API. This is the ground truth for the version installed here.
+- Prefer the docs and the installed module source over recalled general knowledge —
+  Flourish's API surface changes, and a confidently wrong guess costs more than a
+  quick lookup. If the docs and this file disagree, note it rather than silently
+  picking one.
