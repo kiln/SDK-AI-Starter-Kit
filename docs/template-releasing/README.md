@@ -79,7 +79,7 @@ Changes only to tests or development tooling generally need no template release.
 
 When unsure whether an update is compatible:
 
-1. Publish the previous version to your own account and create a visualisation.
+1. Publish the previous version to a test account and create a visualisation.
 2. Change some settings and data bindings, and save it.
 3. Publish the proposed update and reopen the saved visualisation.
 4. Check that its data, settings, appearance and interactions still work.
@@ -91,15 +91,6 @@ as `package.json`. Describe the changes and mark breaking entries with
 To undo a broken compatible release, restore the working code and publish it
 with a new, higher patch version. Check that it handles visualisations saved
 with both the broken version and the earlier working version.
-
-## Sources
-
-Adapted from the publishing commands, semantic version numbering and compatibility
-checks in [How to publish and update templates and modules](https://github.com/kiln/flourish-templates/wiki/How-to-publish-and-update-templates-and-modules),
-and the template version-bump examples in [Semantic Versioning](https://github.com/kiln/flourish-templates/wiki/Semantic-Versioning).
-Source wiki commit: `d54badbde13a0c0f0d47d9c605cb0e3f63fffd25`, read on
-2026-11-11. These source links may require repository access; the applicable
-guidance is included above.
 
 For SDK command details, use `flourish help publish` and the
 [public developer documentation](https://developers.flourish.studio/).
