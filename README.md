@@ -14,7 +14,7 @@ Flourish is a platform for building interactive charts, maps, and data stories. 
 - **Reference/** — a reference template showing advanced patterns (facets, filter controls)
 - **STARTING_PROMPT.txt** — the main instruction file for your AI
 - **SDK_BASICS_FOR_AI.txt** — SDK rules, module wiring patterns, and common gotchas
-- **docs/template-releasing/** — [release and versioning guidance](docs/template-releasing/README.md), with Markdown copies from the templates wiki
+- **docs/template-releasing/** — [release and versioning guidance](docs/template-releasing/README.md) for your own templates
 - **AGENTS.md** — instructions for agents working in this repo
 - **skeleton/AGENTS.md** — agent instructions to copy to a template root, along with `docs/template-releasing/` so the release references work there
 

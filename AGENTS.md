@@ -6,8 +6,8 @@ template patterns.
 
 Before choosing versions, making compatibility changes, writing release notes or
 publishing templates, read [the release and versioning guidance](docs/template-releasing/README.md)
-and the relevant copied wiki pages it links to. Apply its distinction between
-standalone SDK templates and the internal Flourish monorepo release process.
+for publishing to the user's own Flourish account and preserving compatibility
+with their existing visualisations.
 
 When using `skeleton/AGENTS.md` in a new template, also copy
 `docs/template-releasing/` to that template's `docs/template-releasing/` directory

@@ -495,10 +495,9 @@ shows the sample CSV).
 Publishing:
 - Before choosing a version, changing compatibility, writing release notes or
   publishing, read [the release and versioning guidance](docs/template-releasing/README.md)
-  and its relevant copied wiki pages. When copying this AGENTS.md into a template,
+  for publishing to the user's own Flourish account. When copying this file into a template,
   also copy the starter kit's `docs/template-releasing/` directory to the same path
-  in the template. Apply the standalone SDK guidance; internal monorepo release
-  steps only apply when working on that release process.
+  in the template.
 - `flourish publish --prerelease` — test in Studio (with a Data tab) without
   affecting any live release. Do this often; the local server has no Data tab.
 - `flourish publish --release` — promote to a full release.
