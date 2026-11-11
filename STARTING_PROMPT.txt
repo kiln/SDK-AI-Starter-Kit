@@ -390,6 +390,11 @@ Debugging — when the chart looks wrong:
 - grep src/ for any hardcoded column names, console.log, or TODO before publishing.
 
 Publishing:
+- Before choosing a version, changing compatibility, writing release notes or
+  publishing, read docs/template-releasing/README.md and the relevant copied wiki
+  pages it links to. Apply the standalone SDK guidance; internal monorepo release
+  steps only apply when working on that release process. If copying skeleton/AGENTS.md
+  into a new template, also copy docs/template-releasing/ to the same path there.
 - flourish publish --prerelease  to test in Flourish Studio without affecting
   existing visualisations. Do this often — the local dev server has no data tab,
   so complex datasets and column-type conditions can only be tested in Studio.
