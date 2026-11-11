@@ -1145,6 +1145,10 @@ Mobile-first layout:
     Do not try to change the Node version to fix it.
 
 Testing workflow:
+  Before choosing versions, changing compatibility, writing release notes or
+  publishing, read docs/template-releasing/README.md for publishing to the user's
+  own Flourish account and preserving existing visualisations.
+
   1. Open http://localhost:1685 in the browser first — quick check that marks
      render and nothing is blank. HTTP 200 from the server is not enough.
   2. flourish publish --prerelease  → when the user wants to test with their
